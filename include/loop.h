@@ -1,14 +1,21 @@
 #pragma once
-#include "metrics.h"
 #include <collector.h>
+
 #include <memory>
 #include <unordered_map>
 
+#include "config.h"
+#include "metrics.h"
+
 class EventLoop {
 public:
-    EventLoop(std::unique_ptr<ICollector> collector);
+    EventLoop(std::unique_ptr<ICollector> collector, const AppConfig& config);
     void run();
+    void stop();
+
 private:
     std::unique_ptr<ICollector> collector;
+    int poll_timeout_ms;
     std::unordered_map<std::string, std::unique_ptr<IMessageParser>> unit2parser;
+    bool running;
 };

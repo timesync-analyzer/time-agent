@@ -13,9 +13,12 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SYSTEMD REQUIRED libsystemd)
+find_package(yaml-cpp REQUIRED)
+find_package(spdlog REQUIRED)
 
 add_executable(journal_collector
     src/collector.cpp
+    src/config.cpp
     src/loop.cpp
     src/metrics.cpp
     src/main.cpp
@@ -28,6 +31,8 @@ target_include_directories(journal_collector PRIVATE
 
 target_link_libraries(journal_collector PRIVATE
     ${SYSTEMD_LIBRARIES}
+    yaml-cpp
+    spdlog::spdlog
 )
 
 target_compile_options(journal_collector PRIVATE

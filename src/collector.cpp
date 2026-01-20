@@ -1,7 +1,8 @@
 #include "collector.h"
-#include <initializer_list>
-#include <stdexcept>
+
 #include <systemd/sd-journal.h>
+
+#include <stdexcept>
 
 // не забыть включить ntpd service
 
@@ -13,7 +14,7 @@ JournalCollector::JournalCollector(const std::vector<std::string_view>& units) {
 
     sd_journal_flush_matches(journal);
 
-    for (const auto& unit: units) {
+    for (const auto& unit : units) {
         std::string matchSystemd = "_SYSTEMD_UNIT=" + std::string(unit);
         sd_journal_add_match(journal, matchSystemd.c_str(), 0);
 
@@ -43,14 +44,12 @@ std::optional<JournalEvent> JournalCollector::readEvent() {
 
     if (sd_journal_get_data(journal, "_SYSTEMD_UNIT", &data, &len) == 0) {
         const char* raw = static_cast<const char*>(data);
-        event.unit = std::string(raw + sizeof("_SYSTEMD_UNIT=") - 1,
-                              len - (sizeof("_SYSTEMD_UNIT=") - 1));
+        event.unit = std::string(raw + sizeof("_SYSTEMD_UNIT=") - 1, len - (sizeof("_SYSTEMD_UNIT=") - 1));
     }
 
     if (sd_journal_get_data(journal, "MESSAGE", &data, &len) == 0) {
         const char* raw = static_cast<const char*>(data);
-        event.msg = std::string(raw + sizeof("MESSAGE=") - 1,
-                                 len - (sizeof("MESSAGE=") - 1));
+        event.msg = std::string(raw + sizeof("MESSAGE=") - 1, len - (sizeof("MESSAGE=") - 1));
     }
 
     return event;

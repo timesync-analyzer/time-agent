@@ -1,0 +1,8 @@
+settings:
+  poll_timeout_ms: 1000
+  log_level: "debug"
+services:
+  - unit: "ptp4l@slave.service"
+    parser: "ptp4l"
+  - unit: "phc2sys@slave.service"
+    parser: "phc2sys"

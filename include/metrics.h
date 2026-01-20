@@ -1,9 +1,10 @@
 #pragma once
 
-#include "collector.h"
 #include <cstdint>
-#include <string>
 #include <optional>
+#include <string>
+
+#include "collector.h"
 
 struct PTPMetrics {
     std::string unit;
@@ -34,6 +35,7 @@ class SysMetricsCollector {
 public:
     SysMetricsCollector(const std::string& eth);
     void collect(PTPMetrics& metrics);
+
 public:
     std::string interface;
 };

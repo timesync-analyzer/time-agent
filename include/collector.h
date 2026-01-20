@@ -1,10 +1,10 @@
 #pragma once
-#include <iostream>
-#include <map>
+#include <systemd/sd-journal.h>
+
+#include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
-#include <systemd/sd-journal.h>
-#include <optional>
 
 struct JournalEvent {
     uint64_t ts_usec;
@@ -27,6 +27,7 @@ public:
     ~JournalCollector();
     std::optional<JournalEvent> readEvent() override;
     bool waitForData(int timeout_ms) override;
+
 private:
     sd_journal* journal = nullptr;
 };
