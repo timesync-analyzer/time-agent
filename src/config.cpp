@@ -10,7 +10,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
         if (root["services"]) {
             for (const auto& svc : root["services"]) {
                 if (!svc["unit"] || !svc["parser"]) {
-                    spdlog::warn("Skipping incomplete service config");
                     continue;
                 }
                 ServiceConfig sc;
@@ -38,7 +37,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             }
         }
 
-        // Network
         if (root["network"] && root["network"]["interface_name"]) {
             config.configNetworkCollector.interface_name = root["network"]["interface_name"].as<std::string>();
         }
@@ -46,10 +44,8 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
         return config;
 
     } catch (const YAML::Exception& e) {
-        spdlog::error("Config parse error: {}", e.what());
         return std::nullopt;
     } catch (const std::exception& e) {
-        spdlog::error("Config load error: {}", e.what());
         return std::nullopt;
     }
 }

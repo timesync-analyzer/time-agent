@@ -10,4 +10,4 @@ temperature:
   sensors:
     - name: "coretemp"
 network:
-  inteface_name: "eth0"
+  interface_name: "eth0"

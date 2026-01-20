@@ -5,7 +5,8 @@
 #include <fstream>
 
 SysMetricsCollector::SysMetricsCollector(const AppConfig& config)
-    : temperatureCollector(config.configTemperatureCollector.sensors) {
+    : temperatureCollector(config.configTemperatureCollector.sensors),
+      networkCollector(config.configNetworkCollector.interface_name) {
     spdlog::debug("SysMetricsCollector initialized");
 }
 
@@ -17,8 +18,16 @@ SystemMetrics SysMetricsCollector::collect() {
 
     auto temp_metrics = temperatureCollector.collect();
     if (temp_metrics) {
-        metrics.temperatureMetrics = *temp_metrics;
-        spdlog::debug("Collected {} temperature readings", metrics.temperatureMetrics.zonesReadings.size());
+        metrics.temperatureStats = *temp_metrics;
+        spdlog::debug("Collected {} temperature readings", metrics.temperatureStats.zonesReadings.size());
+    } else {
+        spdlog::warn("Failed to collect temperature metrics");
+    }
+
+    auto network_metrics = networkCollector.collect();
+    if (network_metrics) {
+        metrics.networkStats = *network_metrics;
+        spdlog::debug("Collected {} temperature readings", metrics.temperatureStats.zonesReadings.size());
     } else {
         spdlog::warn("Failed to collect temperature metrics");
     }
@@ -84,8 +93,8 @@ TemperatureCollector::TemperatureCollector(const std::unordered_set<std::string>
     }
 }
 
-std::optional<TemperatureMetricsTimestamped> TemperatureCollector::collect() {
-    TemperatureMetricsTimestamped metrics;
+std::optional<TemperatureStats> TemperatureCollector::collect() {
+    TemperatureStats metrics;
 
     for (const auto& [sensor, zones] : zones_) {
         for (const auto& zone : zones) {
@@ -98,6 +107,38 @@ std::optional<TemperatureMetricsTimestamped> TemperatureCollector::collect() {
             }
         }
     }
+
+    return metrics;
+}
+
+NetworkCollector::NetworkCollector(const std::string& interface)
+    : interface(interface), path_to_statistics("/sys/class/net/" + interface + "/statistics/") {
+    metric2path["rx_packets"] = path_to_statistics + "/rx_packets";
+    metric2path["tx_packets"] = path_to_statistics + "/tx_packets";
+    metric2path["rx_dropped"] = path_to_statistics + "/rx_dropped";
+    metric2path["tx_dropped"] = path_to_statistics + "/tx_dropped";
+    metric2path["rx_errors"] = path_to_statistics + "/rx_errors";
+    metric2path["tx_errors"] = path_to_statistics + "/tx_errors";
+    metric2path["collisions"] = path_to_statistics + "/collisions";
+}
+
+std::optional<NetworkStats> NetworkCollector::collect() {  // maybe need optimize by opening files all time
+    NetworkStats metrics;
+    std::unordered_map<std::string, uint64_t*> metric_map = {
+        {"rx_packets", &metrics.rx_packets}, {"tx_packets", &metrics.tx_packets}, {"rx_dropped", &metrics.rx_dropped},
+        {"tx_dropped", &metrics.tx_dropped}, {"rx_errors", &metrics.rx_errors},   {"tx_errors", &metrics.tx_errors},
+        {"collisions", &metrics.collisions}};
+
+    for (const auto& [name, value_ptr] : metric_map) {
+        std::ifstream f(metric2path[name]);
+        if (!f.is_open() || !(f >> *value_ptr)) {
+            spdlog::error("Failed to read {} from {}", name, metric2path[name]);
+            return std::nullopt;
+        }
+    }
+
+    spdlog::debug("Network stats for '{}': rx={}, tx={}, drops={}+{}", interface, metrics.rx_packets, metrics.tx_packets,
+                  metrics.rx_dropped, metrics.tx_dropped);
 
     return metrics;
 }

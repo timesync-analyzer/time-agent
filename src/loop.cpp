@@ -41,9 +41,9 @@ void EventLoop::run() {
                 auto& metrics = *result;
                 spdlog::info("{} offset={} freq={} state={}", metrics.unit, metrics.offset, metrics.freq, metrics.state);
                 auto system_metrics = sys_metrics_collector.collect();
-                spdlog::info("System temperature: {} {} {}", system_metrics.temperatureMetrics.zonesReadings[0].temperature,
-                             system_metrics.temperatureMetrics.zonesReadings[0].label,
-                             system_metrics.temperatureMetrics.zonesReadings[0].sensor);
+                spdlog::info("System temperature: {} {} {}", system_metrics.temperatureStats.zonesReadings[0].temperature,
+                             system_metrics.temperatureStats.zonesReadings[0].label,
+                             system_metrics.temperatureStats.zonesReadings[0].sensor);
             }
         }
     }

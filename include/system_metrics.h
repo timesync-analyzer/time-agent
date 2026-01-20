@@ -15,7 +15,7 @@ public:
     virtual std::optional<T> collect() = 0;
 };
 
-struct TemperatureMetricsTimestamped {
+struct TemperatureStats {
     struct TemperatureMetric {
         std::string sensor;
         std::string label;
@@ -24,16 +24,27 @@ struct TemperatureMetricsTimestamped {
     std::vector<TemperatureMetric> zonesReadings;
 };
 
+struct NetworkStats {
+    uint64_t rx_packets = 0;
+    uint64_t tx_packets = 0;
+    uint64_t rx_dropped = 0;
+    uint64_t tx_dropped = 0;
+    uint64_t rx_errors = 0;
+    uint64_t tx_errors = 0;
+    uint64_t collisions = 0;
+};
+
 struct SystemMetrics {
-    TemperatureMetricsTimestamped temperatureMetrics;
+    TemperatureStats temperatureStats;
+    NetworkStats networkStats;
     int timestamp_ms;
 };
 
-class TemperatureCollector : public IMetricCollector<TemperatureMetricsTimestamped> {
+class TemperatureCollector : public IMetricCollector<TemperatureStats> {
 public:
-    explicit TemperatureCollector(const std::unordered_set<std::string>& cpu_sensors,
+    explicit TemperatureCollector(const std::unordered_set<std::string>& sensors,
                                   const std::string& hwmon_path = "/sys/class/hwmon");
-    std::optional<TemperatureMetricsTimestamped> collect() override;
+    std::optional<TemperatureStats> collect() override;
 
 private:
     struct TempZone {
@@ -45,12 +56,23 @@ private:
     std::string hwmon_path_;
 };
 
+class NetworkCollector : public IMetricCollector<NetworkStats> {
+public:
+    explicit NetworkCollector(const std::string& interface);
+    std::optional<NetworkStats> collect() override;
+
+private:
+    std::string interface;
+    std::string path_to_statistics;
+    std::unordered_map<std::string, std::string> metric2path;
+};
+
 class SysMetricsCollector {
 public:
     SysMetricsCollector(const AppConfig& config);
     SystemMetrics collect();
 
 private:
-    std::string interface;
     TemperatureCollector temperatureCollector;
+    NetworkCollector networkCollector;
 };
