@@ -1,5 +1,7 @@
 #include "metrics.h"
 
+#include <ctime>
+
 std::optional<PTPMetrics> Ptp4lMessageParser::parse(const JournalEvent& event) const {
     PTPMetrics res;
     res.unit = event.unit;
@@ -25,7 +27,3 @@ std::optional<PTPMetrics> Phc2SysMessageParser::parse(const JournalEvent& event)
     res.timestamp = timestamp * 1000;
     return std::nullopt;
 }
-
-SysMetricsCollector::SysMetricsCollector(const std::string& interface) : interface(interface) {}
-
-void SysMetricsCollector::collect(PTPMetrics& metrics) {}

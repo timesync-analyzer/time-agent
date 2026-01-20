@@ -30,12 +30,3 @@ class Phc2SysMessageParser : public IMessageParser {
 public:
     std::optional<PTPMetrics> parse(const JournalEvent& event) const override;
 };
-
-class SysMetricsCollector {
-public:
-    SysMetricsCollector(const std::string& eth);
-    void collect(PTPMetrics& metrics);
-
-public:
-    std::string interface;
-};

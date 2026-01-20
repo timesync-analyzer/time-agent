@@ -21,6 +21,7 @@ add_executable(journal_collector
     src/config.cpp
     src/loop.cpp
     src/metrics.cpp
+    src/system_metrics.cpp
     src/main.cpp
 )
 

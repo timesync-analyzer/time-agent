@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_set>
 
 struct ServiceConfig {
     std::string unit;
@@ -14,9 +15,19 @@ struct MonitoringConfig {
     std::string log_level;
 };
 
+struct TemperatureCollectorConfig {
+    std::unordered_set<std::string> sensors;
+};
+
+struct NetworkConfig {
+    std::string interface_name;
+};
+
 struct AppConfig {
     MonitoringConfig monitorConfig;
     std::vector<ServiceConfig> services;
+    TemperatureCollectorConfig configTemperatureCollector;
+    NetworkConfig configNetworkCollector;
 };
 
 class ConfigLoader {

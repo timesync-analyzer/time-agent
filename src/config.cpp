@@ -9,6 +9,10 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
 
         if (root["services"]) {
             for (const auto& svc : root["services"]) {
+                if (!svc["unit"] || !svc["parser"]) {
+                    spdlog::warn("Skipping incomplete service config");
+                    continue;
+                }
                 ServiceConfig sc;
                 sc.unit = svc["unit"].as<std::string>();
                 sc.parser = svc["parser"].as<std::string>();
@@ -26,7 +30,21 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             }
         }
 
+        if (root["temperature"] && root["temperature"]["sensors"]) {
+            for (const auto& sensor : root["temperature"]["sensors"]) {
+                if (sensor["name"]) {
+                    config.configTemperatureCollector.sensors.emplace(sensor["name"].as<std::string>());
+                }
+            }
+        }
+
+        // Network
+        if (root["network"] && root["network"]["interface_name"]) {
+            config.configNetworkCollector.interface_name = root["network"]["interface_name"].as<std::string>();
+        }
+
         return config;
+
     } catch (const YAML::Exception& e) {
         spdlog::error("Config parse error: {}", e.what());
         return std::nullopt;

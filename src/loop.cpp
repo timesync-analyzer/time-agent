@@ -2,13 +2,12 @@
 
 #include <spdlog/spdlog.h>
 
-#include <iostream>
 #include <memory>
 
 #include "metrics.h"
 
 EventLoop::EventLoop(std::unique_ptr<ICollector> collector, const AppConfig& config)
-    : collector(std::move(collector)), poll_timeout_ms(config.monitorConfig.poll_timeout_ms) {
+    : collector(std::move(collector)), sys_metrics_collector(config), poll_timeout_ms(config.monitorConfig.poll_timeout_ms) {
     for (const auto& svc : config.services) {
         if (svc.parser == "ptp4l") {
             unit2parser[svc.unit] = std::make_unique<Ptp4lMessageParser>();
@@ -27,7 +26,6 @@ void EventLoop::run() {
     while (running) {
         if (collector->waitForData(poll_timeout_ms)) {
             while (auto event = collector->readEvent()) {
-
                 auto it = unit2parser.find(event->unit);
                 if (it == unit2parser.end()) {
                     spdlog::warn("No parser for unit: {}", event->unit);
@@ -42,6 +40,10 @@ void EventLoop::run() {
 
                 auto& metrics = *result;
                 spdlog::info("{} offset={} freq={} state={}", metrics.unit, metrics.offset, metrics.freq, metrics.state);
+                auto system_metrics = sys_metrics_collector.collect();
+                spdlog::info("System temperature: {} {} {}", system_metrics.temperatureMetrics.zonesReadings[0].temperature,
+                             system_metrics.temperatureMetrics.zonesReadings[0].label,
+                             system_metrics.temperatureMetrics.zonesReadings[0].sensor);
             }
         }
     }

@@ -6,3 +6,8 @@ services:
     parser: "ptp4l"
   - unit: "phc2sys@slave.service"
     parser: "phc2sys"
+temperature:
+  sensors:
+    - name: "coretemp"
+network:
+  inteface_name: "eth0"
