@@ -34,16 +34,32 @@ struct NetworkStats {
     uint64_t collisions = 0;
 };
 
+struct CpuStats {
+    double usage_percent;
+    uint64_t context_switches;
+    uint64_t interrupts;
+    uint64_t softirqs;
+};
+
+struct MemoryStats {
+    uint64_t mem_available_kb = 0;
+    uint64_t mem_free_kb = 0;
+    uint64_t swap_total_kb = 0;
+    uint64_t swap_free_kb = 0;
+    uint64_t buffers_kb = 0;
+};
+
 struct SystemMetrics {
     TemperatureStats temperatureStats;
     NetworkStats networkStats;
+    CpuStats cpuStats;
+    MemoryStats memoryStats;
     int timestamp_ms;
 };
 
 class TemperatureCollector : public IMetricCollector<TemperatureStats> {
 public:
-    explicit TemperatureCollector(const std::unordered_set<std::string>& sensors,
-                                  const std::string& hwmon_path = "/sys/class/hwmon");
+    TemperatureCollector(const std::unordered_set<std::string>& sensors, const std::string& hwmon_path = "/sys/class/hwmon");
     std::optional<TemperatureStats> collect() override;
 
 private:
@@ -67,6 +83,21 @@ private:
     std::unordered_map<std::string, std::string> metric2path;
 };
 
+class CpuCollector : public IMetricCollector<CpuStats> {
+public:
+    std::optional<CpuStats> collect() override;
+
+private:
+    uint64_t prev_idle_ = 0;
+    uint64_t prev_total_ = 0;
+};
+
+class MemoryCollector : public IMetricCollector<MemoryStats> {
+public:
+    MemoryCollector() = default;
+    std::optional<MemoryStats> collect() override;
+};
+
 class SysMetricsCollector {
 public:
     SysMetricsCollector(const AppConfig& config);
@@ -75,4 +106,6 @@ public:
 private:
     TemperatureCollector temperatureCollector;
     NetworkCollector networkCollector;
+    CpuCollector cpuCollector;
+    MemoryCollector memoryCollector;
 };

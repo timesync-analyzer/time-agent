@@ -19,7 +19,6 @@ SystemMetrics SysMetricsCollector::collect() {
     auto temp_metrics = temperatureCollector.collect();
     if (temp_metrics) {
         metrics.temperatureStats = *temp_metrics;
-        spdlog::debug("Collected {} temperature readings", metrics.temperatureStats.zonesReadings.size());
     } else {
         spdlog::warn("Failed to collect temperature metrics");
     }
@@ -27,9 +26,22 @@ SystemMetrics SysMetricsCollector::collect() {
     auto network_metrics = networkCollector.collect();
     if (network_metrics) {
         metrics.networkStats = *network_metrics;
-        spdlog::debug("Collected {} temperature readings", metrics.temperatureStats.zonesReadings.size());
     } else {
-        spdlog::warn("Failed to collect temperature metrics");
+        spdlog::warn("Failed to collect network metrics");
+    }
+
+    auto cpu_metrics = cpuCollector.collect();
+    if (cpu_metrics) {
+        metrics.cpuStats = *cpu_metrics;
+    } else {
+        spdlog::warn("Failed to collect cpu metrics");
+    }
+
+    auto memory_metrics = memoryCollector.collect();
+    if (cpu_metrics) {
+        metrics.memoryStats = *memory_metrics;
+    } else {
+        spdlog::warn("Failed to collect memory metrics");
     }
 
     return metrics;
@@ -141,4 +153,92 @@ std::optional<NetworkStats> NetworkCollector::collect() {  // maybe need optimiz
                   metrics.rx_dropped, metrics.tx_dropped);
 
     return metrics;
+}
+
+std::optional<CpuStats> CpuCollector::collect() {
+    CpuStats stats;
+
+    std::ifstream stat_file("/proc/stat");
+    if (!stat_file.is_open()) {
+        spdlog::error("Failed to open /proc/stat");
+        return std::nullopt;
+    }
+
+    std::string line;
+    while (std::getline(stat_file, line)) {
+        if (line.substr(0, 4) == "cpu ") {
+            std::istringstream iss(line);
+            std::string cpu_label;
+            uint64_t user, nice, system, idle, iowait, irq, softirq, steal;
+
+            iss >> cpu_label >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+            uint64_t idle_time = idle + iowait;
+            uint64_t total_time = user + nice + system + idle + iowait + irq + softirq + steal;
+
+            if (prev_total_ > 0) {
+                uint64_t total_delta = total_time - prev_total_;
+                uint64_t idle_delta = idle_time - prev_idle_;
+                if (total_delta > 0) {
+                    stats.usage_percent = 100.0 * (1.0 - static_cast<double>(idle_delta) / static_cast<double>(total_delta));
+                }
+            }
+
+            prev_idle_ = idle_time;
+            prev_total_ = total_time;
+        } else if (line.substr(0, 4) == "ctxt") {
+            std::istringstream iss(line);
+            std::string label;
+            iss >> label >> stats.context_switches;
+        } else if (line.substr(0, 4) == "intr") {
+            std::istringstream iss(line);
+            std::string label;
+            iss >> label >> stats.interrupts;
+        } else if (line.substr(0, 7) == "softirq") {
+            std::istringstream iss(line);
+            std::string label;
+            iss >> label >> stats.softirqs;
+        }
+    }
+
+    spdlog::debug("CPU stats: usage={:.1f}%, ctxt={}, intr={}, softirq={}", stats.usage_percent, stats.context_switches,
+                  stats.interrupts, stats.softirqs);
+
+    return stats;
+}
+
+std::optional<MemoryStats> MemoryCollector::collect() {
+    MemoryStats stats;
+
+    std::ifstream meminfo("/proc/meminfo");
+    if (!meminfo.is_open()) {
+        spdlog::error("Failed to open /proc/meminfo");
+        return std::nullopt;
+    }
+
+    std::string line;
+    while (std::getline(meminfo, line)) {
+        std::istringstream iss(line);
+        std::string key;
+        uint64_t value;
+
+        iss >> key >> value;
+
+        if (key == "MemAvailable:") {
+            stats.mem_available_kb = value;
+        } else if (key == "MemFree:") {
+            stats.mem_free_kb = value;
+        } else if (key == "SwapTotal:") {
+            stats.swap_total_kb = value;
+        } else if (key == "SwapFree:") {
+            stats.swap_free_kb = value;
+        } else if (key == "Buffers:") {
+            stats.buffers_kb = value;
+        }
+    }
+
+    spdlog::debug("Memory stats: available={}KB, free={}KB, swap_used={}KB", stats.mem_available_kb, stats.mem_free_kb,
+                  stats.swap_total_kb - stats.swap_free_kb);
+
+    return stats;
 }
