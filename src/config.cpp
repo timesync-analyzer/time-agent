@@ -7,6 +7,13 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
         YAML::Node root = YAML::LoadFile(path);
         AppConfig config;
 
+        if (root["global"]) {
+            const auto& global = root["global"];
+            if (global["node"]) {
+                config.globalConfig.node = global["node"].as<std::string>();
+            }
+        }
+
         if (root["services"]) {
             for (const auto& svc : root["services"]) {
                 if (!svc["unit"] || !svc["parser"]) {
@@ -27,6 +34,9 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             if (settings["log_level"]) {
                 config.monitorConfig.log_level = settings["log_level"].as<std::string>();
             }
+            if (settings["sys_metric_update_freq"]) {
+                config.monitorConfig.sys_metric_update_freq = settings["sys_metric_update_freq"].as<int>();
+            }
         }
 
         if (root["temperature"] && root["temperature"]["sensors"]) {
@@ -39,6 +49,19 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
 
         if (root["network"] && root["network"]["interface_name"]) {
             config.configNetworkCollector.interface_name = root["network"]["interface_name"].as<std::string>();
+        }
+
+        if (root["zmq"]) {
+            const auto& zmq = root["zmq"];
+            if (zmq["endpoint"]) {
+                config.configZMQ.endpoint = zmq["endpoint"].as<std::string>();
+            }
+            if (zmq["queue_size"]) {
+                config.configZMQ.queue_size = zmq["queue_size"].as<int>();
+            }
+            if (zmq["node"]) {
+                config.configZMQ.timeout_after_close_ms = zmq["timeout_after_close_ms"].as<int>();
+            }
         }
 
         return config;

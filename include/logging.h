@@ -9,7 +9,7 @@
 
 namespace logging {
 inline void init(const std::string& level = "info") {
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
 
     auto logger = std::make_shared<spdlog::logger>("time-agent", console_sink);
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");

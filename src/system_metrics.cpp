@@ -10,8 +10,8 @@ SysMetricsCollector::SysMetricsCollector(const AppConfig& config)
     spdlog::debug("SysMetricsCollector initialized");
 }
 
-SystemMetrics SysMetricsCollector::collect() {
-    SystemMetrics metrics;
+SystemStats SysMetricsCollector::collect() {
+    SystemStats metrics;
 
     metrics.timestamp_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();

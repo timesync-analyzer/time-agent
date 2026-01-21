@@ -8,6 +8,24 @@
 
 namespace fs = std::filesystem;
 
+struct Ptp4lStats {
+    std::string unit;
+    int timestamp_ms;
+    long long offset = 0;
+    long long freq = 0;
+    long long path_delay = 0;
+    int state = 0;
+};
+
+struct Phc2SysStats {
+    std::string unit;
+    int timestamp_ms;
+    long long offset = 0;
+    long long freq = 0;
+    long long path_delay = 0;
+    int state = 0;
+};
+
 template <typename T>
 class IMetricCollector {
 public:
@@ -49,12 +67,12 @@ struct MemoryStats {
     uint64_t buffers_kb = 0;
 };
 
-struct SystemMetrics {
+struct SystemStats {
+    int timestamp_ms;
     TemperatureStats temperatureStats;
     NetworkStats networkStats;
     CpuStats cpuStats;
     MemoryStats memoryStats;
-    int timestamp_ms;
 };
 
 class TemperatureCollector : public IMetricCollector<TemperatureStats> {
@@ -101,7 +119,7 @@ public:
 class SysMetricsCollector {
 public:
     SysMetricsCollector(const AppConfig& config);
-    SystemMetrics collect();
+    SystemStats collect();
 
 private:
     TemperatureCollector temperatureCollector;

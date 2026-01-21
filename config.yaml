@@ -1,13 +1,18 @@
+global:
+  node: "hawk-d12"
 settings:
   poll_timeout_ms: 1000
+  sys_metric_update_freq: 5 # каждый пятый раз после сборка метрик
   log_level: "debug"
 services:
   - unit: "ptp4l@slave.service"
-    parser: "ptp4l"
   - unit: "phc2sys@slave.service"
-    parser: "phc2sys"
 temperature:
   sensors:
     - name: "coretemp"
 network:
   interface_name: "eth0"
+zmq:
+  endpoint: "tcp://localhost:5557"
+  queue_size: 10000
+  timeout_after_close_ms: 1000

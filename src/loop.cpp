@@ -2,49 +2,58 @@
 
 #include <spdlog/spdlog.h>
 
-#include <memory>
+#include "adapter.h"
 
-#include "metrics.h"
+EventLoop::EventLoop(std::unique_ptr<ICollector> collector, std::unique_ptr<IAdapter> adapter, const AppConfig& config)
+    : collector(std::move(collector)),
+      adapter(std::move(adapter)),
+      sys_metrics_collector(config),
+      sys_metric_update_freq(config.monitorConfig.sys_metric_update_freq),
+      poll_timeout_ms(config.monitorConfig.poll_timeout_ms) {
+    initParsers();
+}
 
-EventLoop::EventLoop(std::unique_ptr<ICollector> collector, const AppConfig& config)
-    : collector(std::move(collector)), sys_metrics_collector(config), poll_timeout_ms(config.monitorConfig.poll_timeout_ms) {
-    for (const auto& svc : config.services) {
-        if (svc.parser == "ptp4l") {
-            unit2parser[svc.unit] = std::make_unique<Ptp4lMessageParser>();
-        } else if (svc.parser == "phc2sys") {
-            unit2parser[svc.unit] = std::make_unique<Phc2SysMessageParser>();
-        } else {
-            spdlog::warn("Unknown parser type: {}", svc.parser);
-        }
-        spdlog::debug("Registered parser '{}' for unit '{}'", svc.parser, svc.unit);
-    }
+void EventLoop::initParsers() {
+    parsers_["ptp4l@slave.service"] = [this](const JournalEvent& event) {
+        auto result = collector->parse_ptp4l_msg(event);
+        // if (result) {
+        //     auto pb_metrics = converters::to_ptp4l_metrics(*result);
+        //     // sender_.send(pb_metrics);
+        // }
+    };
+
+    parsers_["phc2sys@slave.service"] = [this](const JournalEvent& event) {
+        auto result = collector->parse_phc2sys_msg(event);
+        // if (result) {
+        //     auto pb_metrics = converters::to_phc2sys_metrics(*result, node_id_);
+        //     sender_.send(pb_metrics);
+        // }
+    };
 }
 
 void EventLoop::run() {
     spdlog::info("Event loop started");
+    SystemStats sysMetrics;
     running = true;
+    int iter_counter = 0;
     while (running) {
         if (collector->waitForData(poll_timeout_ms)) {
             while (auto event = collector->readEvent()) {
-                auto it = unit2parser.find(event->unit);
-                if (it == unit2parser.end()) {
+                auto it = parsers_.find(event->unit);
+                if (it == parsers_.end()) {
                     spdlog::warn("No parser for unit: {}", event->unit);
                     continue;
                 }
 
-                auto result = it->second->parse(event.value());
-                if (!result) {
-                    spdlog::debug("Failed to parse message from {}: {}", event->unit, event->msg);
-                    continue;
-                }
+                it->second(*event);
 
-                auto& metrics = *result;
-                spdlog::info("{} offset={} freq={} state={}", metrics.unit, metrics.offset, metrics.freq, metrics.state);
-                auto system_metrics = sys_metrics_collector.collect();
-                spdlog::info("System temperature: {} {} {}", system_metrics.temperatureStats.zonesReadings[0].temperature,
-                             system_metrics.temperatureStats.zonesReadings[0].label,
-                             system_metrics.temperatureStats.zonesReadings[0].sensor);
+                spdlog::debug("Processed metrics from {}", event->unit);
             }
+        }
+        if (++iter_counter >= sys_metric_update_freq) {
+            sysMetrics = sys_metrics_collector.collect();
+            // adapter->send_sys_metrics(sysMetrics);
+            iter_counter = 0;
         }
     }
 

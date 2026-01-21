@@ -3,6 +3,7 @@
 #include <string_view>
 #include <vector>
 
+#include "adapter.h"
 #include "collector.h"
 #include "config.h"
 #include "logging.h"
@@ -44,7 +45,8 @@ int main(int argc, char* argv[]) {
         spdlog::debug("Monitoring unit: {}", svc.unit);
     }
     auto collector = std::make_unique<JournalCollector>(units);
-    EventLoop loop(std::move(collector), config);
+    auto adapter = std::make_unique<ZMQAdapter>(config.configZMQ, config.globalConfig.node);
+    EventLoop loop(std::move(collector), std::move(adapter), config);
 
     g_loop = &loop;
     std::signal(SIGINT, signalHandler);

@@ -15,13 +15,25 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(SYSTEMD REQUIRED libsystemd)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(Protobuf REQUIRED)
+find_package(cppzmq REQUIRED)
+
+set(PROTO_FILES proto/metrics.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
+
+add_library(proto_lib ${PROTO_SRCS} ${PROTO_HDRS})
+target_include_directories(proto_lib PUBLIC
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(proto_lib PUBLIC ${Protobuf_LIBRARIES})
 
 add_executable(journal_collector
     src/collector.cpp
     src/config.cpp
     src/loop.cpp
-    src/metrics.cpp
     src/system_metrics.cpp
+    src/adapter.cpp
     src/main.cpp
 )
 
@@ -34,6 +46,8 @@ target_link_libraries(journal_collector PRIVATE
     ${SYSTEMD_LIBRARIES}
     yaml-cpp
     spdlog::spdlog
+    proto_lib
+    cppzmq
 )
 
 target_compile_options(journal_collector PRIVATE
