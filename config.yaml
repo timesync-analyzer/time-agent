@@ -13,6 +13,6 @@ temperature:
 network:
   interface_name: "eth0"
 zmq:
-  endpoint: "tcp://localhost:5557"
+  endpoint: "tcp://armsrv:5555"
   queue_size: 10000
   timeout_after_close_ms: 1000

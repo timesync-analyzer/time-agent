@@ -5,7 +5,8 @@
 #include "adapter.h"
 
 EventLoop::EventLoop(std::unique_ptr<ICollector> collector, std::unique_ptr<IAdapter> adapter, const AppConfig& config)
-    : collector(std::move(collector)),
+    : node(config.globalConfig.node),
+      collector(std::move(collector)),
       adapter(std::move(adapter)),
       sys_metrics_collector(config),
       sys_metric_update_freq(config.monitorConfig.sys_metric_update_freq),
@@ -16,18 +17,17 @@ EventLoop::EventLoop(std::unique_ptr<ICollector> collector, std::unique_ptr<IAda
 void EventLoop::initParsers() {
     parsers_["ptp4l@slave.service"] = [this](const JournalEvent& event) {
         auto result = collector->parse_ptp4l_msg(event);
-        // if (result) {
-        //     auto pb_metrics = converters::to_ptp4l_metrics(*result);
-        //     // sender_.send(pb_metrics);
-        // }
+        if (result) {
+            adapter->send_ptp_statistics(*result, node);
+        }
     };
 
     parsers_["phc2sys@slave.service"] = [this](const JournalEvent& event) {
         auto result = collector->parse_phc2sys_msg(event);
-        // if (result) {
-        //     auto pb_metrics = converters::to_phc2sys_metrics(*result, node_id_);
-        //     sender_.send(pb_metrics);
-        // }
+        if (result) {
+            auto pb_metrics = converters::to_phc2sys_metrics(*result, node);
+            adapter->send_phc2sys_statistics(*result, node);
+        }
     };
 }
 
@@ -52,7 +52,7 @@ void EventLoop::run() {
         }
         if (++iter_counter >= sys_metric_update_freq) {
             sysMetrics = sys_metrics_collector.collect();
-            // adapter->send_sys_metrics(sysMetrics);
+            adapter->send_sys_statistics(sysMetrics, node);
             iter_counter = 0;
         }
     }

@@ -14,8 +14,6 @@ struct JournalEvent {
     std::string msg;
 };
 
-const uint64_t TIMEOUT_USEC = 1'000'000;
-
 class IMessageParser {
 public:
     virtual ~IMessageParser() = default;

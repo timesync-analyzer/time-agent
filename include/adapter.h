@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include <zmq.hpp>
 
 #include "metrics.pb.h"
@@ -9,7 +11,7 @@ namespace converters {
 
 Ptp4lMetrics to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node_id);
 
-Phc2SysMetrics to_phc2sys_metrics(const Ptp4lStats& internal, const std::string& node_id);
+Phc2SysMetrics to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node_id);
 
 SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& node_id);
 
@@ -17,20 +19,55 @@ SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& 
 
 class IAdapter {
 public:
-    ~IAdapter() = default;
-    virtual bool send_ptp_statistics(const Ptp4lStats& ptp4lStats) = 0;
-    virtual bool send_phc2sys_statistics(const Ptp4lStats& phc2sysStats) = 0;
-    virtual bool send_sys_statistics(const SystemStats& sysStats) = 0;
+    virtual ~IAdapter() = default;
+    virtual bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) = 0;
+    virtual bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) = 0;
+    virtual bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) = 0;
 };
 
 class ZMQAdapter : public IAdapter {
 public:
+    ~ZMQAdapter() override;
     ZMQAdapter(const ZMQConfig& config, const std::string& node);
-    bool send_ptp_statistics(const Ptp4lStats& ptp4lStats) override;
-    bool send_phc2sys_statistics(const Ptp4lStats& phc2sysStats) override;
-    bool send_sys_statistics(const SystemStats& sysStats) override;
+    bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) override;
+    bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) override;
+    bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) override;
 
 private:
     std::unique_ptr<zmq::context_t> context_;
     std::unique_ptr<zmq::socket_t> sender_;
+
+private:
+    template <typename T>
+    bool send_impl(const T& msg);
 };
+
+template <typename T>
+bool ZMQAdapter::send_impl(const T& msg) {
+    static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a protobuf message");
+    if (!sender_) {
+        spdlog::error("Sender not initialized");
+        return false;
+    }
+
+    std::string serialized;
+    if (!msg.SerializeToString(&serialized)) {
+        spdlog::error("Failed to serialize message");
+        return false;
+    }
+
+    try {
+        zmq::message_t zmq_msg(serialized.data(), serialized.size());
+
+        auto result = sender_->send(zmq_msg, zmq::send_flags::dontwait);
+        if (!result) {
+            spdlog::warn("Queue full");
+            return false;
+        }
+
+        return true;
+    } catch (const zmq::error_t& e) {
+        spdlog::error("Send error: {}", e.what());
+        return false;
+    }
+}

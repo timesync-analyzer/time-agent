@@ -17,6 +17,7 @@ public:
 private:
     void initParsers();
 
+    std::string node;
     std::unique_ptr<ICollector> collector;
     std::unique_ptr<IAdapter> adapter;
     SysMetricsCollector sys_metrics_collector;

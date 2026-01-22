@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
 
     auto config = ConfigLoader::loadOrDefault(config_path);
     logging::init(config.monitorConfig.log_level);
+
     spdlog::info("Starting time-agent");
     spdlog::info("Config loaded from: {}", config_path);
     std::vector<std::string_view> units;
@@ -54,6 +55,5 @@ int main(int argc, char* argv[]) {
 
     loop.run();
 
-    logging::shutdown();
     return 0;
 }
