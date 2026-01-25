@@ -1,5 +1,6 @@
 #include "collector.h"
 
+#include <spdlog/spdlog.h>
 #include <systemd/sd-journal.h>
 
 #include <stdexcept>
@@ -70,27 +71,26 @@ bool JournalCollector::waitForData(int timeout_ms) {
     return (result == SD_JOURNAL_APPEND || result == SD_JOURNAL_INVALIDATE);
 }
 
+// янв 22 18:57:25 hawk-d12 ptp4l[46823]: ptp4l[192898.322]: master offset         21 s2 freq   +3212 path delay         7
 std::optional<Ptp4lStats> JournalMessageParser::parse_ptp4l_msg(const std::string& unit, const std::string& msg) const {
     Ptp4lStats res;
     res.unit = unit;
     double timestamp;
-    // master offset -9 s2 freq +3204 path delay 7
-    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %lld s%d freq %lld", &timestamp, &res.offset, &res.state, &res.freq) >=
-        3) {
+    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
+               &res.freq, &res.path_delay) >= 3) {
         return res;
     }
     res.timestamp_ms = timestamp * 1000;
     return std::nullopt;
 }
 
-// phc2sys
+// янв 22 18:57:25 hawk-d12 phc2sys[42767]: phc2sys[192898.077]: CLOCK_REALTIME phc offset       -42 s2 freq   +1257 delay   1450
 std::optional<Phc2SysStats> JournalMessageParser::parse_phc2sys_msg(const std::string& unit, const std::string& msg) const {
     Phc2SysStats res;
     res.unit = unit;
     double timestamp;
-    // CLOCK_REALTIME phc offset 15 s2 freq +1425
-    if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %lld s%d freq %lld", &timestamp, &res.offset, &res.state, &res.freq) >=
-        3) {
+    if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
+               &res.freq, &res.path_delay) >= 3) {
         return res;
     }
     res.timestamp_ms = timestamp * 1000;

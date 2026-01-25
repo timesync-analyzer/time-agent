@@ -10,19 +10,19 @@ namespace fs = std::filesystem;
 
 struct Ptp4lStats {
     std::string unit;
-    int timestamp_ms;
-    long long offset = 0;
-    long long freq = 0;
-    long long path_delay = 0;
+    uint64_t timestamp_ms;
+    int64_t offset = 0;
+    int64_t freq = 0;
+    int64_t path_delay = 0;
     int state = 0;
 };
 
 struct Phc2SysStats {
     std::string unit;
-    int timestamp_ms;
-    long long offset = 0;
-    long long freq = 0;
-    long long path_delay = 0;
+    uint64_t timestamp_ms;
+    int64_t offset = 0;
+    int64_t freq = 0;
+    int64_t path_delay = 0;
     int state = 0;
 };
 
@@ -68,7 +68,7 @@ struct MemoryStats {
 };
 
 struct SystemStats {
-    int timestamp_ms;
+    uint64_t timestamp_ms;
     TemperatureStats temperatureStats;
     NetworkStats networkStats;
     CpuStats cpuStats;

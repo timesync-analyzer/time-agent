@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "adapter.h"
+#include "timestamp_utils.h"
 
 EventLoop::EventLoop(std::unique_ptr<ICollector> collector, std::unique_ptr<IAdapter> adapter, const AppConfig& config)
     : node(config.globalConfig.node),
@@ -52,6 +53,7 @@ void EventLoop::run() {
         }
         if (++iter_counter >= sys_metric_update_freq) {
             sysMetrics = sys_metrics_collector.collect();
+            sysMetrics.timestamp_ms = timestamp_utils::now_us();
             adapter->send_sys_statistics(sysMetrics, node);
             iter_counter = 0;
         }
