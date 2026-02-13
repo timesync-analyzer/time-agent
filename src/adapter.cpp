@@ -9,51 +9,58 @@
 #include "timestamp_utils.h"
 
 namespace converters {
-Ptp4lMetrics to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node) {
-    Ptp4lMetrics metrics;
-    metrics.set_node(node);
-    *metrics.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L);
+    auto* metrics = metrics_wrapper.mutable_ptp4l();
 
-    metrics.set_path_delay(internal.path_delay);
-    metrics.set_frequency(internal.freq);
-    metrics.set_offset_ns(internal.offset);
-    metrics.set_state(internal.state);
-    return metrics;
+    metrics->set_node(node);
+    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+
+    metrics->set_path_delay(internal.path_delay);
+    metrics->set_frequency(internal.freq);
+    metrics->set_offset_ns(internal.offset);
+    metrics->set_state(internal.state);
+    return metrics_wrapper;
 }
 
-Phc2SysMetrics to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node) {
-    Phc2SysMetrics metrics;
+MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PHC2SYS);
+    auto* metrics = metrics_wrapper.mutable_phc2sys();
 
-    metrics.set_node(node);
-    *metrics.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    metrics->set_node(node);
+    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
 
-    metrics.set_path_delay(internal.path_delay);
-    metrics.set_frequency(internal.freq);
-    metrics.set_offset_ns(internal.offset);
-    metrics.set_state(internal.state);
-    return metrics;
+    metrics->set_path_delay(internal.path_delay);
+    metrics->set_frequency(internal.freq);
+    metrics->set_offset_ns(internal.offset);
+    metrics->set_state(internal.state);
+    return metrics_wrapper;
 }
 
-SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& node_id) {
-    SystemMetrics metrics;
+MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& node_id) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_SYSTEM);
+    auto* metrics = metrics_wrapper.mutable_system();
 
-    metrics.set_node(node_id);
-    *metrics.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    metrics->set_node(node_id);
+    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
 
-    auto* cpu = metrics.mutable_cpustats();
+    auto* cpu = metrics->mutable_cpustats();
     cpu->set_usage_percent(internal.cpuStats.usage_percent);
     cpu->set_context_switches(internal.cpuStats.context_switches);
     cpu->set_interrupts(internal.cpuStats.interrupts);
     cpu->set_softirqs(internal.cpuStats.softirqs);
 
-    auto* mem = metrics.mutable_memorystats();
+    auto* mem = metrics->mutable_memorystats();
     mem->set_mem_available_kb(internal.memoryStats.mem_available_kb);
     mem->set_mem_free_kb(internal.memoryStats.mem_free_kb);
     mem->set_swap_total_kb(internal.memoryStats.swap_total_kb);
     mem->set_swap_free_kb(internal.memoryStats.swap_free_kb);
     mem->set_buffers_kb(internal.memoryStats.buffers_kb);
 
-    auto* net = metrics.mutable_networkstats();
+    auto* net = metrics->mutable_networkstats();
     net->set_rx_packets(internal.networkStats.rx_packets);
     net->set_tx_packets(internal.networkStats.tx_packets);
     net->set_rx_dropped(internal.networkStats.rx_dropped);
@@ -62,7 +69,7 @@ SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& 
     net->set_tx_errors(internal.networkStats.tx_errors);
     net->set_collisions(internal.networkStats.collisions);
 
-    auto* temp = metrics.mutable_temperaturestats();
+    auto* temp = metrics->mutable_temperaturestats();
     for (const auto& zone : internal.temperatureStats.zonesReadings) {
         auto* reading = temp->add_zones_readings();
         reading->set_sensor(zone.sensor);
@@ -70,7 +77,7 @@ SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& 
         reading->set_temperature(zone.temperature);
     }
 
-    return metrics;
+    return metrics_wrapper;
 }
 
 }  // namespace converters

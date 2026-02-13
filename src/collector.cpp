@@ -76,11 +76,11 @@ std::optional<Ptp4lStats> JournalMessageParser::parse_ptp4l_msg(const std::strin
     Ptp4lStats res;
     res.unit = unit;
     double timestamp;
-    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
+    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
                &res.freq, &res.path_delay) >= 3) {
+        res.timestamp_ms = timestamp * 1000;
         return res;
     }
-    res.timestamp_ms = timestamp * 1000;
     return std::nullopt;
 }
 
@@ -91,8 +91,8 @@ std::optional<Phc2SysStats> JournalMessageParser::parse_phc2sys_msg(const std::s
     double timestamp;
     if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
                &res.freq, &res.path_delay) >= 3) {
+        res.timestamp_ms = timestamp * 1000;
         return res;
     }
-    res.timestamp_ms = timestamp * 1000;
     return std::nullopt;
 }

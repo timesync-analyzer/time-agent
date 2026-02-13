@@ -9,11 +9,11 @@
 
 namespace converters {
 
-Ptp4lMetrics to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node_id);
+MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node_id);
 
-Phc2SysMetrics to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node_id);
+MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node_id);
 
-SystemMetrics to_system_metrics(const SystemStats& internal, const std::string& node_id);
+MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& node_id);
 
 }  // namespace converters
 
