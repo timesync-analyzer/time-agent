@@ -12,6 +12,9 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             if (global["node"]) {
                 config.globalConfig.node = global["node"].as<std::string>();
             }
+            if (global["regime"]) {
+                config.globalConfig.sync_regime = global["sync_regime"].as<std::string>();
+            }
         }
 
         if (root["services"]) {

@@ -7,6 +7,7 @@
 
 struct GlobalConfig {
     std::string node;
+    std::string sync_regime;
 };
 
 struct ServiceConfig {

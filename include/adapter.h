@@ -9,11 +9,13 @@
 
 namespace converters {
 
-MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node_id);
+MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node_name);
 
-MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node_id);
+MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node_name);
 
-MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& node_id);
+MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& node_name);
+
+MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node_name);
 
 }  // namespace converters
 
@@ -23,6 +25,7 @@ public:
     virtual bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) = 0;
     virtual bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) = 0;
     virtual bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) = 0;
+    virtual bool send_node_info(const NodeInfo& info, const std::string& node) = 0;
 };
 
 class ZMQAdapter : public IAdapter {
@@ -32,6 +35,7 @@ public:
     bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) override;
     bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) override;
     bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) override;
+    bool send_node_info(const NodeInfo& info, const std::string& node) override;
 
 private:
     std::unique_ptr<zmq::context_t> context_;

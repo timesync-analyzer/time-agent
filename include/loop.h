@@ -6,6 +6,7 @@
 
 #include "adapter.h"
 #include "config.h"
+#include "metrics.pb.h"
 #include "system_metrics.h"
 
 class EventLoop {
@@ -16,8 +17,13 @@ public:
 
 private:
     void initParsers();
+    NodeInfo getNodeInfo() const;
 
     std::string node;
+    std::string ip;
+    NodeType node_type;
+    std::string net_interface;
+
     std::unique_ptr<ICollector> collector;
     std::unique_ptr<IAdapter> adapter;
     SysMetricsCollector sys_metrics_collector;

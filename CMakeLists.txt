@@ -53,9 +53,9 @@ target_compile_options(journal_collector_lib PUBLIC
     ${SYSTEMD_CFLAGS_OTHER}
 )
 
-add_executable(journal_collector src/main.cpp)
+add_executable(time_agent src/main.cpp)
 
-target_link_libraries(journal_collector PRIVATE journal_collector_lib)
+target_link_libraries(time_agent PRIVATE journal_collector_lib)
 
 enable_testing()
 

@@ -26,13 +26,13 @@ JournalCollector::JournalCollector(const std::vector<std::string_view>& units)
     sd_journal_flush_matches(journal);
 
     for (const auto& unit : units) {
-        std::string matchSystemd = "_SYSTEMD_UNIT=" + std::string(unit);
+        std::string matchSystemd = "_COMM=" + std::string(unit);
         sd_journal_add_match(journal, matchSystemd.c_str(), 0);
 
         sd_journal_add_disjunction(journal);
     }
-    sd_journal_add_conjunction(journal);
-    sd_journal_add_match(journal, "_TRANSPORT=stdout", 0);
+    sd_journal_add_disjunction(journal);
+    sd_journal_add_match(journal, "_TRANSPORT=syslog", 0);
 
     sd_journal_seek_tail(journal);
     sd_journal_previous(journal);
@@ -53,9 +53,9 @@ std::optional<JournalEvent> JournalCollector::readEvent() {
     const void* data;
     size_t len;
 
-    if (sd_journal_get_data(journal, "_SYSTEMD_UNIT", &data, &len) == 0) {
+    if (sd_journal_get_data(journal, "_COMM", &data, &len) == 0) {
         const char* raw = static_cast<const char*>(data);
-        event.unit = std::string(raw + sizeof("_SYSTEMD_UNIT=") - 1, len - (sizeof("_SYSTEMD_UNIT=") - 1));
+        event.unit = std::string(raw + sizeof("_COMM=") - 1, len - (sizeof("_COMM=") - 1));
     }
 
     if (sd_journal_get_data(journal, "MESSAGE", &data, &len) == 0) {
@@ -76,7 +76,7 @@ std::optional<Ptp4lStats> JournalMessageParser::parse_ptp4l_msg(const std::strin
     Ptp4lStats res;
     res.unit = unit;
     double timestamp;
-    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
+    if (sscanf(msg.c_str(), "[%lf]: master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
                &res.freq, &res.path_delay) >= 3) {
         res.timestamp_ms = timestamp * 1000;
         return res;
@@ -89,8 +89,8 @@ std::optional<Phc2SysStats> JournalMessageParser::parse_phc2sys_msg(const std::s
     Phc2SysStats res;
     res.unit = unit;
     double timestamp;
-    if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
-               &res.freq, &res.path_delay) >= 3) {
+    if (sscanf(msg.c_str(), "[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
+               &res.path_delay) >= 3) {
         res.timestamp_ms = timestamp * 1000;
         return res;
     }

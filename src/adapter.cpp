@@ -12,10 +12,9 @@ namespace converters {
 MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& node) {
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L);
+    metrics_wrapper.set_node_name(node);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
     auto* metrics = metrics_wrapper.mutable_ptp4l();
-
-    metrics->set_node(node);
-    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
 
     metrics->set_path_delay(internal.path_delay);
     metrics->set_frequency(internal.freq);
@@ -27,10 +26,10 @@ MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& n
 MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::string& node) {
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PHC2SYS);
-    auto* metrics = metrics_wrapper.mutable_phc2sys();
+    metrics_wrapper.set_node_name(node);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
 
-    metrics->set_node(node);
-    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    auto* metrics = metrics_wrapper.mutable_phc2sys();
 
     metrics->set_path_delay(internal.path_delay);
     metrics->set_frequency(internal.freq);
@@ -39,13 +38,13 @@ MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::strin
     return metrics_wrapper;
 }
 
-MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& node_id) {
+MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string& nodeName) {
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_SYSTEM);
-    auto* metrics = metrics_wrapper.mutable_system();
+    metrics_wrapper.set_node_name(nodeName);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
 
-    metrics->set_node(node_id);
-    *metrics->mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    auto* metrics = metrics_wrapper.mutable_system();
 
     auto* cpu = metrics->mutable_cpustats();
     cpu->set_usage_percent(internal.cpuStats.usage_percent);
@@ -80,6 +79,20 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
     return metrics_wrapper;
 }
 
+MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_NODE_INFO);
+    metrics_wrapper.set_node_name(node);
+
+    NodeInfo* node_info = metrics_wrapper.mutable_node_info();
+
+    node_info->set_net_interface(internal.net_interface());
+    node_info->set_ip_address(internal.ip_address());
+    node_info->set_node_type(internal.node_type());
+
+    return metrics_wrapper;
+}
+
 }  // namespace converters
 
 ZMQAdapter::ZMQAdapter(const ZMQConfig& config, const std::string& node)
@@ -99,6 +112,11 @@ bool ZMQAdapter::send_ptp_statistics(const Ptp4lStats& ptp4l, const std::string&
 
 bool ZMQAdapter::send_phc2sys_statistics(const Phc2SysStats& phc2sys, const std::string& node) {
     auto metrics = converters::to_phc2sys_metrics(phc2sys, node);
+    return send_impl(metrics);
+}
+
+bool ZMQAdapter::send_node_info(const NodeInfo& info, const std::string& node) {
+    auto metrics = converters::to_node_info(info, node);
     return send_impl(metrics);
 }
 

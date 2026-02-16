@@ -1,17 +1,16 @@
 global:
   node: "hawk-d12"
+  sync_regime: "slave"
+  need_agent: true
 settings:
   poll_timeout_ms: 1000
   sys_metric_update_freq: 5 # каждый пятый раз после сборка метрик
   log_level: "debug"
-services:
-  - unit: "ptp4l@slave.service"
-  - unit: "phc2sys@slave.service"
 temperature:
   sensors:
     - name: "coretemp"
 network:
-  interface_name: "eth0"
+  interface_name: "eth1"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
