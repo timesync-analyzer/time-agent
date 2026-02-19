@@ -12,8 +12,13 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             if (global["node"]) {
                 config.globalConfig.node = global["node"].as<std::string>();
             }
-            if (global["regime"]) {
-                config.globalConfig.sync_regime = global["sync_regime"].as<std::string>();
+            if (global["sync_regime"]) {
+                const auto regime = global["sync_regime"].as<std::string>();
+                if (regime != "master" && regime != "slave") {
+                    spdlog::error("Invalid sync_regime '{}': must be 'master' or 'slave'", regime);
+                    return std::nullopt;
+                }
+                config.globalConfig.sync_regime = regime;
             }
         }
 
@@ -62,7 +67,7 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             if (zmq["queue_size"]) {
                 config.configZMQ.queue_size = zmq["queue_size"].as<int>();
             }
-            if (zmq["node"]) {
+            if (zmq["timeout_after_close_ms"]) {
                 config.configZMQ.timeout_after_close_ms = zmq["timeout_after_close_ms"].as<int>();
             }
         }

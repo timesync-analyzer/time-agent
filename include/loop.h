@@ -1,6 +1,9 @@
 #pragma once
+
 #include <collector.h>
 
+#include <atomic>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -16,7 +19,10 @@ public:
     void stop();
 
 private:
-    void initParsers();
+    using ParserFunc = std::function<void(const JournalEvent&)>;
+    using HandlerMap = std::unordered_map<std::string, ParserFunc>;
+
+    static HandlerMap buildHandlers(ICollector& collector, IAdapter& adapter, const std::string& node);
     NodeInfo getNodeInfo() const;
 
     std::string node;
@@ -26,10 +32,9 @@ private:
 
     std::unique_ptr<ICollector> collector;
     std::unique_ptr<IAdapter> adapter;
-    SysMetricsCollector sys_metrics_collector;
-    int sys_metric_update_freq;
-    int poll_timeout_ms;
-    bool running;
-    using ParserFunc = std::function<void(const JournalEvent&)>;
-    std::unordered_map<std::string, ParserFunc> parsers_;
+    SysMetricsCollector sysMetricsCollector;
+    int sysMetricUpdateFreq;
+    int pollTimeoutMs;
+    std::atomic<bool> running{false};
+    HandlerMap parsers_;
 };

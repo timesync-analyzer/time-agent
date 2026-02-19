@@ -1,16 +1,25 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "config.h"
 
 namespace fs = std::filesystem;
+struct SystemPaths {
+    std::string hwmon = "/sys/class/hwmon";
+    std::string procStat = "/proc/stat";
+    std::string procMeminfo = "/proc/meminfo";
+    std::string netStats = "/sys/class/net";
+};
 
 struct Ptp4lStats {
     std::string unit;
-    uint64_t timestamp_ms;
+    uint64_t timestamp_us;
     int64_t offset = 0;
     int64_t freq = 0;
     int64_t path_delay = 0;
@@ -19,7 +28,7 @@ struct Ptp4lStats {
 
 struct Phc2SysStats {
     std::string unit;
-    uint64_t timestamp_ms;
+    uint64_t timestamp_us;
     int64_t offset = 0;
     int64_t freq = 0;
     int64_t path_delay = 0;
@@ -68,7 +77,7 @@ struct MemoryStats {
 };
 
 struct SystemStats {
-    uint64_t timestamp_ms;
+    uint64_t timestamp_us;
     TemperatureStats temperatureStats;
     NetworkStats networkStats;
     CpuStats cpuStats;
@@ -77,48 +86,52 @@ struct SystemStats {
 
 class TemperatureCollector : public IMetricCollector<TemperatureStats> {
 public:
-    TemperatureCollector(const std::unordered_set<std::string>& sensors, const std::string& hwmon_path = "/sys/class/hwmon");
+    TemperatureCollector(const std::unordered_set<std::string>& sensors, const std::string& hwmonPath = "/sys/class/hwmon");
     std::optional<TemperatureStats> collect() override;
 
 private:
     struct TempZone {
         std::string label;
-        fs::path input_path;
+        fs::path inputPath;
     };
-    std::unordered_map<std::string, fs::path> sensor2path_;
-    std::unordered_map<std::string, std::vector<TempZone>> zones_;
-    std::string hwmon_path_;
+    std::unordered_map<std::string, fs::path> sensorToPath_;
+    std::unordered_map<std::string, std::vector<TempZone>> tempZones_;
 };
 
 class NetworkCollector : public IMetricCollector<NetworkStats> {
 public:
-    explicit NetworkCollector(const std::string& interface);
+    NetworkCollector(const std::string& interface, const std::string& netStatsBase = "/sys/class/net");
     std::optional<NetworkStats> collect() override;
 
 private:
-    std::string interface;
-    std::string path_to_statistics;
-    std::unordered_map<std::string, std::string> metric2path;
+    std::string interface_;
+    std::string pathToStatistics_;
+    std::unordered_map<std::string, std::string> metricToPath_;
 };
 
 class CpuCollector : public IMetricCollector<CpuStats> {
 public:
+    explicit CpuCollector(std::string procStat = "/proc/stat");
     std::optional<CpuStats> collect() override;
 
 private:
-    uint64_t prev_idle_ = 0;
-    uint64_t prev_total_ = 0;
+    std::string procStat_;
+    uint64_t prevIdle_ = 0;
+    uint64_t prevTotal_ = 0;
 };
 
 class MemoryCollector : public IMetricCollector<MemoryStats> {
 public:
-    MemoryCollector() = default;
+    explicit MemoryCollector(std::string procMeminfo = "/proc/meminfo");
     std::optional<MemoryStats> collect() override;
+
+private:
+    std::string procMeminfo_;
 };
 
 class SysMetricsCollector {
 public:
-    SysMetricsCollector(const AppConfig& config);
+    SysMetricsCollector(const AppConfig& config, const SystemPaths& paths = SystemPaths{});
     SystemStats collect();
 
 private:

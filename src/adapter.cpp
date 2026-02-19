@@ -13,7 +13,7 @@ MetricsWrapper to_ptp4l_metrics(const Ptp4lStats& internal, const std::string& n
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L);
     metrics_wrapper.set_node_name(node);
-    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
     auto* metrics = metrics_wrapper.mutable_ptp4l();
 
     metrics->set_path_delay(internal.path_delay);
@@ -27,7 +27,7 @@ MetricsWrapper to_phc2sys_metrics(const Phc2SysStats& internal, const std::strin
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PHC2SYS);
     metrics_wrapper.set_node_name(node);
-    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
 
     auto* metrics = metrics_wrapper.mutable_phc2sys();
 
@@ -42,7 +42,7 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_SYSTEM);
     metrics_wrapper.set_node_name(nodeName);
-    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_ms(internal.timestamp_ms);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
 
     auto* metrics = metrics_wrapper.mutable_system();
 
@@ -64,7 +64,7 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
     net->set_tx_packets(internal.networkStats.tx_packets);
     net->set_rx_dropped(internal.networkStats.rx_dropped);
     net->set_tx_dropped(internal.networkStats.tx_dropped);
-    net->set_rx_errors(internal.networkStats.rx_dropped);
+    net->set_rx_errors(internal.networkStats.rx_errors);
     net->set_tx_errors(internal.networkStats.tx_errors);
     net->set_collisions(internal.networkStats.collisions);
 

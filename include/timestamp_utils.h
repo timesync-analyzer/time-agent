@@ -14,14 +14,10 @@ inline int64_t now_us() {
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-inline int64_t now_ms() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-inline Timestamp from_ms(int64_t ms) {
+inline Timestamp from_us(int64_t us) {
     Timestamp ts;
-    ts.set_seconds(ms / 1000);
-    ts.set_nanos((ms % 1000) * 1000000);
+    ts.set_seconds(us / 1'000'000);
+    ts.set_nanos((us % 1'000'000) * 1000);
     return ts;
 }
 
