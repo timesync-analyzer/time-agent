@@ -95,10 +95,10 @@ MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node) {
 
 MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node) {
     MetricsWrapper metrics_wrapper;
-    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L);
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PPS);
     metrics_wrapper.set_node_name(node);
     *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
-    auto* metrics = metrics_wrapper.mutable_ptp4l();
+    auto* metrics = metrics_wrapper.mutable_pps();
 
     metrics->set_offset_ns(internal.offset);
     return metrics_wrapper;
@@ -119,16 +119,19 @@ ZMQAdapter::ZMQAdapter(const ZMQConfig& config, const std::string& node)
 
 bool ZMQAdapter::send_ptp_statistics(const Ptp4lStats& ptp4l, const std::string& node) {
     auto metrics = converters::to_ptp4l_metrics(ptp4l, node);
+    spdlog::debug("send_ptp_statistics");
     return send_impl(metrics);
 }
 
 bool ZMQAdapter::send_phc2sys_statistics(const Phc2SysStats& phc2sys, const std::string& node) {
     auto metrics = converters::to_phc2sys_metrics(phc2sys, node);
+    spdlog::debug("send_phc2sys_statistics");
     return send_impl(metrics);
 }
 
 bool ZMQAdapter::send_pps_statistics(const PPSStats& ppsStats, const std::string& node) {
     auto metrics = converters::to_pps_metrics(ppsStats, node);
+    spdlog::debug("send_pps_statistics");
     return send_impl(metrics);
 }
 

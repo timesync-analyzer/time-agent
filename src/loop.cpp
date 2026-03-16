@@ -50,21 +50,24 @@ EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>
       sysMetricsCollector(config),
       sysMetricUpdateFreq(config.monitorConfig.sys_metric_update_freq),
       pollTimeoutMs(config.monitorConfig.poll_timeout_ms) {
-    parsers_ = buildHandlers(this->collectors, *this->adapter, node);
+    parsers_ = buildHandlers(*this->adapter, node);
 }
 
-EventLoop::HandlerMap EventLoop::buildHandlers(std::unordered_map<std::string, std::unique_ptr<ICollector>>& collector,
-                                               IAdapter& adapter, const std::string& node) {
+EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::string& node) {
     HandlerMap handlers;
 
-    handlers["ptp4l"] = [&collector, &adapter, node](const JournalEvent& event) {
-        if (auto metrics = collector["ptp4l"]->parse_ptp4l_msg(event)) {
+    handlers["ptp4l"] = [parser = std::make_shared<Ptp4lParser>(), &adapter, node](const CollectorEvent& event) {
+        if (auto metrics = parser->parseMetrics(event.msg)) {
+            metrics->timestamp_us = event.ts_usec;
+            metrics->unit = event.unit;
             spdlog::debug("[{}] parsed {}: offset = {}, freq = {}, path_delay = {}", metrics->timestamp_us, metrics->unit,
                           metrics->offset, metrics->freq, metrics->path_delay);
             adapter.send_ptp_statistics(*metrics, node);
             return;
         }
-        if (auto portEvent = collector["ptp4l"]->parse_ptp4l_port_event(event)) {
+        if (auto portEvent = parser->parsePortEvent(event.msg)) {
+            portEvent->timestamp_us = event.ts_usec;
+            portEvent->unit = event.unit;
             spdlog::info("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
                          portEvent->toState, portEvent->trigger);
             return;
@@ -72,22 +75,26 @@ EventLoop::HandlerMap EventLoop::buildHandlers(std::unordered_map<std::string, s
         spdlog::debug("[ptp4l] unhandled: {}", event.msg);
     };
 
-    handlers["phc2sys"] = [&collector, &adapter, node](const JournalEvent& event) {
-        if (auto metrics = collector["phc2sys"]->parse_phc2sys_msg(event)) {
+    handlers["phc2sys"] = [parser = std::make_shared<Phc2SysParser>(), &adapter, node](const CollectorEvent& event) {
+        if (auto metrics = parser->parseMetrics(event.msg)) {
+            metrics->timestamp_us = event.ts_usec;
+            metrics->unit = event.unit;
             spdlog::debug("[{}] parsed {}: offset = {}, freq = {}, path_delay = {}", metrics->timestamp_us, metrics->unit,
                           metrics->offset, metrics->freq, metrics->path_delay);
             adapter.send_phc2sys_statistics(*metrics, node);
             return;
         }
-        if (collector["phc2sys"]->is_phc2sys_waiting(event)) {
+        if (parser->isWaiting(event.msg)) {
             spdlog::warn("[phc2sys] waiting for ptp4l synchronisation {}", event.msg);
             return;
         }
         spdlog::debug("[phc2sys] unhandled: {}", event.msg);
     };
 
-    handlers["ppswatch"] = [&collector, &adapter, node](const JournalEvent& event) {
-        if (auto metrics = collector["ppswatch"]->parse_pps_msg(event)) {
+    handlers["ppswatch"] = [parser = std::make_shared<PPSParser>(), &adapter, node](const CollectorEvent& event) {
+        if (auto metrics = parser->parseMetrics(event.msg)) {
+            metrics->timestamp_us = event.ts_usec;
+            metrics->unit = event.unit;
             adapter.send_pps_statistics(*metrics, node);
             spdlog::debug("[{}] parsed {}: offset = {}", metrics->timestamp_us, metrics->unit, metrics->offset);
             return;

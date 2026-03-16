@@ -22,11 +22,10 @@ public:
     void stop();
 
 private:
-    using ParserFunc = std::function<void(const JournalEvent&)>;
+    using ParserFunc = std::function<void(const CollectorEvent&)>;
     using HandlerMap = std::unordered_map<std::string, ParserFunc>;
 
-    static HandlerMap buildHandlers(std::unordered_map<std::string, std::unique_ptr<ICollector>>& collector, IAdapter& adapter,
-                                    const std::string& node);
+    static HandlerMap buildHandlers(IAdapter& adapter, const std::string& node);
     NodeInfo getNodeInfo() const;
     void readerLoop(ICollector& collector);
 
@@ -42,6 +41,6 @@ private:
     int pollTimeoutMs;
     std::atomic<bool> running{false};
     HandlerMap parsers_;
-    ThreadQueue<JournalEvent> eventQueue_;
+    ThreadQueue<CollectorEvent> eventQueue_;
     std::vector<std::thread> readerThreads_;
 };
