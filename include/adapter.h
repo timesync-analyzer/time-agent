@@ -17,6 +17,7 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
 
 MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node_name);
 
+MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node);
 }  // namespace converters
 
 class IAdapter {
@@ -24,6 +25,7 @@ public:
     virtual ~IAdapter() = default;
     virtual bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) = 0;
     virtual bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) = 0;
+    virtual bool send_pps_statistics(const PPSStats& ppsStats, const std::string& node) = 0;
     virtual bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) = 0;
     virtual bool send_node_info(const NodeInfo& info, const std::string& node) = 0;
 };
@@ -34,6 +36,7 @@ public:
     ZMQAdapter(const ZMQConfig& config, const std::string& node);
     bool send_ptp_statistics(const Ptp4lStats& ptp4lStats, const std::string& node) override;
     bool send_phc2sys_statistics(const Phc2SysStats& phc2sysStats, const std::string& node) override;
+    bool send_pps_statistics(const PPSStats& ppsStats, const std::string& node) override;
     bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) override;
     bool send_node_info(const NodeInfo& info, const std::string& node) override;
 

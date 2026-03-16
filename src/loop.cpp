@@ -5,6 +5,9 @@
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
+#include <thread>
+
 #include "adapter.h"
 #include "metrics.pb.h"
 #include "timestamp_utils.h"
@@ -36,28 +39,32 @@ std::string resolveInterfaceIP(const std::string& iface) {
 
 }  // namespace
 
-EventLoop::EventLoop(std::unique_ptr<ICollector> collector, std::unique_ptr<IAdapter> adapter, const AppConfig& config)
+EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
+                     const AppConfig& config)
     : node(config.globalConfig.node),
       ip(resolveInterfaceIP(config.configNetworkCollector.interface_name)),
       node_type(config.globalConfig.sync_regime == "master" ? NODE_TYPE_MASTER : NODE_TYPE_SLAVE),
       net_interface(config.configNetworkCollector.interface_name),
-      collector(std::move(collector)),
+      collectors(std::move(collectors)),
       adapter(std::move(adapter)),
       sysMetricsCollector(config),
       sysMetricUpdateFreq(config.monitorConfig.sys_metric_update_freq),
       pollTimeoutMs(config.monitorConfig.poll_timeout_ms) {
-    parsers_ = buildHandlers(*this->collector, *this->adapter, node);
+    parsers_ = buildHandlers(this->collectors, *this->adapter, node);
 }
 
-EventLoop::HandlerMap EventLoop::buildHandlers(ICollector& collector, IAdapter& adapter, const std::string& node) {
+EventLoop::HandlerMap EventLoop::buildHandlers(std::unordered_map<std::string, std::unique_ptr<ICollector>>& collector,
+                                               IAdapter& adapter, const std::string& node) {
     HandlerMap handlers;
 
     handlers["ptp4l"] = [&collector, &adapter, node](const JournalEvent& event) {
-        if (auto metrics = collector.parse_ptp4l_msg(event)) {
+        if (auto metrics = collector["ptp4l"]->parse_ptp4l_msg(event)) {
+            spdlog::debug("[{}] parsed {}: offset = {}, freq = {}, path_delay = {}", metrics->timestamp_us, metrics->unit,
+                          metrics->offset, metrics->freq, metrics->path_delay);
             adapter.send_ptp_statistics(*metrics, node);
             return;
         }
-        if (auto portEvent = collector.parse_ptp4l_port_event(event)) {
+        if (auto portEvent = collector["ptp4l"]->parse_ptp4l_port_event(event)) {
             spdlog::info("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
                          portEvent->toState, portEvent->trigger);
             return;
@@ -66,49 +73,74 @@ EventLoop::HandlerMap EventLoop::buildHandlers(ICollector& collector, IAdapter& 
     };
 
     handlers["phc2sys"] = [&collector, &adapter, node](const JournalEvent& event) {
-        if (auto metrics = collector.parse_phc2sys_msg(event)) {
+        if (auto metrics = collector["phc2sys"]->parse_phc2sys_msg(event)) {
+            spdlog::debug("[{}] parsed {}: offset = {}, freq = {}, path_delay = {}", metrics->timestamp_us, metrics->unit,
+                          metrics->offset, metrics->freq, metrics->path_delay);
             adapter.send_phc2sys_statistics(*metrics, node);
             return;
         }
-        if (collector.is_phc2sys_waiting(event)) {
-            spdlog::warn("[phc2sys] waiting for ptp4l synchronisation");
+        if (collector["phc2sys"]->is_phc2sys_waiting(event)) {
+            spdlog::warn("[phc2sys] waiting for ptp4l synchronisation {}", event.msg);
             return;
         }
         spdlog::debug("[phc2sys] unhandled: {}", event.msg);
     };
 
+    handlers["ppswatch"] = [&collector, &adapter, node](const JournalEvent& event) {
+        if (auto metrics = collector["ppswatch"]->parse_pps_msg(event)) {
+            adapter.send_pps_statistics(*metrics, node);
+            spdlog::debug("[{}] parsed {}: offset = {}", metrics->timestamp_us, metrics->unit, metrics->offset);
+            return;
+        }
+        spdlog::debug("[ppswatch] unhandled: {}", event.msg);
+    };
+
     return handlers;
+}
+
+void EventLoop::readerLoop(ICollector& collector) {
+    while (running) {
+        auto event = collector.readEvent();  // блокируется — но в своём потоке
+        if (!event) {
+            break;  // процесс завершился
+        }
+        eventQueue_.push(std::move(*event));
+    }
 }
 
 void EventLoop::run() {
     spdlog::info("Event loop started");
     adapter->send_node_info(getNodeInfo(), node);
 
-    SystemStats sysMetrics;
     running = true;
+
+    for (auto& [name, collector] : collectors) {
+        readerThreads_.emplace_back([this, &collector = *collector]() { readerLoop(collector); });
+    }
+
+    SystemStats sysMetrics;
     int iterCounter = 0;
 
     while (running) {
-        if (collector->waitForData(pollTimeoutMs)) {
-            while (auto event = collector->readEvent()) {
-                auto it = parsers_.find(event->unit);
-                if (it == parsers_.end()) {
-                    spdlog::warn("No parser for unit: {}", event->unit);
-                    continue;
-                }
-
-                it->second(*event);
-
-                spdlog::debug("Processed metrics from {}, {}", event->unit, event->ts_usec);
+        while (auto event = eventQueue_.pop(std::chrono::milliseconds(pollTimeoutMs))) {
+            auto it = parsers_.find(event->unit);
+            if (it == parsers_.end()) {
+                spdlog::warn("No parser for unit: {}", event->unit);
+                continue;
+            }
+            it->second(*event);
+            ++iterCounter;
+            if (iterCounter >= sysMetricUpdateFreq) {
+                sysMetrics = sysMetricsCollector.collect();
+                sysMetrics.timestamp_us = timestamp_utils::now_us();
+                adapter->send_sys_statistics(sysMetrics, node);
+                iterCounter = 0;
             }
         }
+    }
 
-        if (++iterCounter >= sysMetricUpdateFreq) {
-            sysMetrics = sysMetricsCollector.collect();
-            sysMetrics.timestamp_us = timestamp_utils::now_us();
-            adapter->send_sys_statistics(sysMetrics, node);
-            iterCounter = 0;
-        }
+    for (auto& t : readerThreads_) {
+        if (t.joinable()) t.join();
     }
 
     spdlog::info("Event loop stopped");

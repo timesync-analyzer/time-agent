@@ -35,6 +35,12 @@ struct Phc2SysStats {
     int state = 0;
 };
 
+struct PPSStats {
+    std::string unit;
+    uint64_t timestamp_us;
+    int64_t offset = 0;
+};
+
 template <typename T>
 class IMetricCollector {
 public:

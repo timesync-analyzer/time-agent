@@ -93,6 +93,17 @@ MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node) {
     return metrics_wrapper;
 }
 
+MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L);
+    metrics_wrapper.set_node_name(node);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
+    auto* metrics = metrics_wrapper.mutable_ptp4l();
+
+    metrics->set_offset_ns(internal.offset);
+    return metrics_wrapper;
+}
+
 }  // namespace converters
 
 ZMQAdapter::ZMQAdapter(const ZMQConfig& config, const std::string& node)
@@ -100,6 +111,7 @@ ZMQAdapter::ZMQAdapter(const ZMQConfig& config, const std::string& node)
     sender_->set(zmq::sockopt::sndhwm, config.queue_size);
     sender_->set(zmq::sockopt::linger, config.timeout_after_close_ms);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    spdlog::info("Connecting to endpoint: '{}'", config.endpoint);
     sender_->connect(config.endpoint);
 
     spdlog::info("MetricsSender connected to {} (node: {})", config.endpoint, node);
@@ -112,6 +124,11 @@ bool ZMQAdapter::send_ptp_statistics(const Ptp4lStats& ptp4l, const std::string&
 
 bool ZMQAdapter::send_phc2sys_statistics(const Phc2SysStats& phc2sys, const std::string& node) {
     auto metrics = converters::to_phc2sys_metrics(phc2sys, node);
+    return send_impl(metrics);
+}
+
+bool ZMQAdapter::send_pps_statistics(const PPSStats& ppsStats, const std::string& node) {
+    auto metrics = converters::to_pps_metrics(ppsStats, node);
     return send_impl(metrics);
 }
 

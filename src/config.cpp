@@ -22,18 +22,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             }
         }
 
-        if (root["services"]) {
-            for (const auto& svc : root["services"]) {
-                if (!svc["unit"] || !svc["parser"]) {
-                    continue;
-                }
-                ServiceConfig sc;
-                sc.unit = svc["unit"].as<std::string>();
-                sc.parser = svc["parser"].as<std::string>();
-                config.services.push_back(std::move(sc));
-            }
-        }
-
         if (root["settings"]) {
             const auto& settings = root["settings"];
             if (settings["poll_timeout_ms"]) {
@@ -72,19 +60,46 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             }
         }
 
+        if (root["services"]) {
+            const auto& services = root["services"];
+            if (services["ptp4l"]) {
+                ServiceConfig ptp4lConfig;
+                ptp4lConfig.name = "ptp4l";
+                ptp4lConfig.on = services["ptp4l"]["on"].as<bool>(false);
+                ptp4lConfig.dev = services["ptp4l"]["dev"].as<std::string>();
+                ptp4lConfig.source = services["ptp4l"]["source"].as<std::string>();
+                config.service.push_back(ptp4lConfig);
+            }
+            if (services["phc2sys"]) {
+                ServiceConfig phc2sysConfig;
+                phc2sysConfig.name = "phc2sys";
+                phc2sysConfig.on = services["phc2sys"]["on"].as<bool>(false);
+                phc2sysConfig.dev = services["phc2sys"]["dev"].as<std::string>();
+                phc2sysConfig.source = services["phc2sys"]["source"].as<std::string>();
+                config.service.push_back(phc2sysConfig);
+            }
+            if (services["ppswatch"]) {
+                ServiceConfig ppsConfig;
+                ppsConfig.name = "ppswatch";
+                ppsConfig.on = services["ppswatch"]["on"].as<bool>(false);
+                ppsConfig.dev = services["ppswatch"]["dev"].as<std::string>();
+                ppsConfig.source = services["ppswatch"]["source"].as<std::string>();
+                config.service.push_back(ppsConfig);
+            }
+        }
         return config;
 
     } catch (const YAML::Exception& e) {
+        spdlog::error("YAML parsing error in '{}': {}", path, e.what());
         return std::nullopt;
     } catch (const std::exception& e) {
+        spdlog::error("Failed to load config '{}': {}", path, e.what());
         return std::nullopt;
     }
 }
 
 AppConfig ConfigLoader::defaultConfig() {
     AppConfig config;
-
-    config.services = {{"ptp4l@slave.service", "ptp4l"}, {"phc2sys@slave.service", "phc2sys"}};
 
     config.monitorConfig.poll_timeout_ms = 1000;
     config.monitorConfig.log_level = "info";

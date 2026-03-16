@@ -8,11 +8,14 @@
 struct GlobalConfig {
     std::string node;
     std::string sync_regime;
+    bool need_pps;
 };
 
 struct ServiceConfig {
-    std::string unit;
-    std::string parser;
+    bool on;
+    std::string name;
+    std::string source;
+    std::string dev;
 };
 
 struct MonitoringConfig {
@@ -38,7 +41,7 @@ struct ZMQConfig {
 struct AppConfig {
     GlobalConfig globalConfig;
     MonitoringConfig monitorConfig;
-    std::vector<ServiceConfig> services;
+    std::vector<ServiceConfig> service;
     TemperatureCollectorConfig configTemperatureCollector;
     NetworkConfig configNetworkCollector;
     ZMQConfig configZMQ;

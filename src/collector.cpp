@@ -3,7 +3,11 @@
 #include <spdlog/spdlog.h>
 #include <systemd/sd-journal.h>
 
+#include <optional>
 #include <stdexcept>
+
+#include "config.h"
+#include "system_metrics.h"
 
 // не забыть включить ntpd service
 
@@ -32,10 +36,19 @@ std::optional<Ptp4lPortEvent> ICollector::parse_ptp4l_port_event(const JournalEv
     return result;
 }
 
+std::optional<PPSStats> ICollector::parse_pps_msg(const JournalEvent& event) {
+    auto result = msgParser_->parse_pps_msg(event.unit, event.msg);
+    if (result) {
+        result->timestamp_us = event.ts_usec;
+    }
+    return result;
+}
+
 bool ICollector::is_phc2sys_waiting(const JournalEvent& event) { return msgParser_->is_phc2sys_waiting(event.msg); }
 
-JournalCollector::JournalCollector(const std::vector<std::string_view>& units)
-    : ICollector(std::make_unique<JournalMessageParser>()) {
+JournalCollector::JournalCollector(const std::string_view& unit) : ICollector(std::make_unique<JournalMessageParser>()) {
+    spdlog::debug("use unit {}", unit);
+
     int ret = sd_journal_open(&journal_, SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
         throw std::runtime_error("sd_journal_open failed: " + std::to_string(-ret));
@@ -43,12 +56,13 @@ JournalCollector::JournalCollector(const std::vector<std::string_view>& units)
 
     sd_journal_flush_matches(journal_);
 
-    for (const auto& unit : units) {
-        std::string matchSystemd = "_COMM=" + std::string(unit);
-        sd_journal_add_match(journal_, matchSystemd.c_str(), 0);
-        sd_journal_add_disjunction(journal_);
-    }
+    std::string matchComm = "_COMM=" + std::string(unit);
+    sd_journal_add_match(journal_, matchComm.c_str(), 0);
+
     sd_journal_add_disjunction(journal_);
+
+    std::string matchIdent = "SYSLOG_IDENTIFIER=" + std::string(unit);
+    sd_journal_add_match(journal_, matchIdent.c_str(), 0);
     sd_journal_add_match(journal_, "_TRANSPORT=syslog", 0);
 
     sd_journal_seek_tail(journal_);
@@ -62,8 +76,20 @@ JournalCollector::~JournalCollector() {
 }
 
 std::optional<JournalEvent> JournalCollector::readEvent() {
-    if (sd_journal_next(journal_) <= 0) {
-        return std::nullopt;
+    while (true) {
+        int ret = sd_journal_next(journal_);
+        if (ret > 0) {
+            break;
+        }
+        if (ret < 0) {
+            spdlog::error("sd_journal_next failed: {}", ret);
+            return std::nullopt;
+        }
+        ret = sd_journal_wait(journal_, 1'000'000);
+        if (ret < 0) {
+            spdlog::error("sd_journal_wait failed: {}", ret);
+            return std::nullopt;
+        }
     }
     JournalEvent event;
     sd_journal_get_realtime_usec(journal_, &event.ts_usec);
@@ -84,16 +110,14 @@ std::optional<JournalEvent> JournalCollector::readEvent() {
     return event;
 }
 
-bool JournalCollector::waitForData(int timeoutMs) {
-    int result = sd_journal_wait(journal_, static_cast<uint64_t>(timeoutMs) * 1000);
-    return (result == SD_JOURNAL_APPEND || result == SD_JOURNAL_INVALIDATE);
-}
-
-// пример: ptp4l[192898.322]: master offset         21 s2 freq   +3212 path delay         7
 std::optional<Ptp4lStats> JournalMessageParser::parse_ptp4l_msg(const std::string& unit, const std::string& msg) const {
     Ptp4lStats res;
     res.unit = unit;
     double timestamp;
+    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
+               &res.freq, &res.path_delay) >= 3) {
+        return res;
+    }
     if (sscanf(msg.c_str(), "[%lf] master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
                &res.path_delay) >= 3) {
         return res;
@@ -101,15 +125,29 @@ std::optional<Ptp4lStats> JournalMessageParser::parse_ptp4l_msg(const std::strin
     return std::nullopt;
 }
 
-// пример: phc2sys[192898.077]: CLOCK_REALTIME phc offset       -42 s2 freq   +1257 delay   1450
 std::optional<Phc2SysStats> JournalMessageParser::parse_phc2sys_msg(const std::string& unit, const std::string& msg) const {
     Phc2SysStats res;
     res.unit = unit;
     double timestamp;
+    if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
+               &res.freq, &res.path_delay) >= 3) {
+        return res;
+    }
     if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
                &res.path_delay) >= 3) {
         return res;
     }
+    return std::nullopt;
+}
+
+std::optional<PPSStats> JournalMessageParser::parse_pps_msg(const std::string& unit, const std::string& msg) const {
+    PPSStats res;
+    res.unit = unit;
+    int64_t timestamp_val, sequence_val;
+    if (sscanf(msg.c_str(), "timestamp: %ld, sequence: %ld, offset: %ld", &timestamp_val, &sequence_val, &res.offset) == 3) {
+        return res;
+    }
+    spdlog::debug("return nullopt {}", msg);
     return std::nullopt;
 }
 
@@ -119,14 +157,12 @@ std::optional<Ptp4lPortEvent> JournalMessageParser::parse_ptp4l_port_event(const
                                                                            const std::string& msg) const {
     Ptp4lPortEvent res;
     res.unit = unit;
-
     double timestamp;
-    char portName[128];
-    char fromState[64];
-    char toState[64];
-    char trigger[128];
+    char portName[128], fromState[64], toState[64], trigger[128];
 
-    if (sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
+    if (sscanf(msg.c_str(), "ptp4l[%lf]: port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
+               fromState, toState, trigger) == 6 ||
+        sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6) {
         res.portName = portName;
         res.fromState = fromState;
@@ -134,11 +170,42 @@ std::optional<Ptp4lPortEvent> JournalMessageParser::parse_ptp4l_port_event(const
         res.trigger = trigger;
         return res;
     }
-
     return std::nullopt;
 }
 
 // пример: phc2sys[1878438.561]: Waiting for ptp4l...
 bool JournalMessageParser::is_phc2sys_waiting(const std::string& msg) const {
-    return msg.find("Waiting for ptp4l") != std::string::npos;
+    return msg.find("Waiting for ptp4l") != std::string::npos;  // этот и так работает
+}
+
+SubproccessCollector::SubproccessCollector(const std::string& cmd, const std::vector<std::string>& args)
+    : ICollector(std::make_unique<JournalMessageParser>()), unit(cmd) {
+    std::vector<std::string> fullArgs(args);  // args уже содержит все флаги
+    child = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream);
+    if (!child.running()) {
+        spdlog::error("Failed to start process: {}", cmd);
+        throw std::runtime_error("Failed to start process: " + cmd);
+    }
+    spdlog::info("Started process: {} (pid={})", cmd, child.id());
+}
+
+std::optional<JournalEvent> SubproccessCollector::readEvent() {
+    JournalEvent event{};
+    auto now = std::chrono::system_clock::now();
+    event.ts_usec = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+    event.unit = unit;
+    if (!getline(stream, event.msg)) {
+        return std::nullopt;
+    }
+    if (event.msg.empty()) {
+        return std::nullopt;
+    }
+    return event;
+}
+
+SubproccessCollector::~SubproccessCollector() {
+    if (child.running()) {
+        child.terminate();
+        child.wait();
+    }
 }

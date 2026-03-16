@@ -17,6 +17,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(cppzmq REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem)
 
 set(PROTO_FILES protocol/proto/metrics.proto)
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
