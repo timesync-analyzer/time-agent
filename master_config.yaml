@@ -1,6 +1,6 @@
 global:
-  node: "hawk-d12"
-  sync_regime: "slave"
+  node: "zip-bookworm"
+  sync_regime: "master"
 settings:
   poll_timeout_ms: 1000
   sys_metric_update_freq: 15
@@ -16,11 +16,11 @@ zmq:
   timeout_after_close_ms: 1000
 services:
   ptp4l:
-    on: false
+    on: true
     source: "journal"
     dev: "eth1"
   phc2sys:
-    on: false
+    on: true
     source: "journal"
     dev: "eth1"
   ppswatch:

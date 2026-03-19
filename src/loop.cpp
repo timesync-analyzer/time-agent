@@ -34,7 +34,7 @@ std::string resolveInterfaceIP(const std::string& iface) {
     }
 
     spdlog::warn("Interface '{}' not found or has no IPv4 address", iface);
-    return "";
+    return "0.0.0.0";
 }
 
 }  // namespace
