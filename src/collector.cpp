@@ -1,7 +1,10 @@
 #include "collector.h"
 
+#include <fcntl.h>
+#include <poll.h>
 #include <spdlog/spdlog.h>
 #include <systemd/sd-journal.h>
+#include <unistd.h>
 
 #include <chrono>
 #include <optional>
@@ -69,8 +72,14 @@ std::optional<PPSStats> PPSParser::parseMetrics(const std::string& msg) const {
 JournalCollector::JournalCollector(const std::string_view& unit) {
     spdlog::debug("use unit {}", unit);
 
+    if (pipe2(stop_pipe_, O_CLOEXEC) < 0) {
+        throw std::runtime_error("pipe2 failed: " + std::to_string(errno));
+    }
+
     int ret = sd_journal_open(&journal_, SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
+        close(stop_pipe_[0]);
+        close(stop_pipe_[1]);
         throw std::runtime_error("sd_journal_open failed: " + std::to_string(-ret));
     }
 
@@ -93,6 +102,17 @@ JournalCollector::~JournalCollector() {
     if (journal_) {
         sd_journal_close(journal_);
     }
+    if (stop_pipe_[0] >= 0) {
+        close(stop_pipe_[0]);
+    }
+    if (stop_pipe_[1] >= 0) {
+        close(stop_pipe_[1]);
+    }
+}
+
+void JournalCollector::stop() {
+    char buf = 1;
+    write(stop_pipe_[1], &buf, 1);
 }
 
 std::optional<CollectorEvent> JournalCollector::readEvent() {
@@ -105,10 +125,22 @@ std::optional<CollectorEvent> JournalCollector::readEvent() {
             spdlog::error("sd_journal_next failed: {}", ret);
             return std::nullopt;
         }
-        ret = sd_journal_wait(journal_, 1'000'000);
+
+        int jfd = sd_journal_get_fd(journal_);
+        struct pollfd fds[2] = {{jfd, static_cast<short>(sd_journal_get_events(journal_)), 0}, {stop_pipe_[0], POLLIN, 0}};
+        ret = poll(fds, 2, 1000);
         if (ret < 0) {
-            spdlog::error("sd_journal_wait failed: {}", ret);
+            if (errno == EINTR) {
+                continue;
+            }
+            spdlog::error("poll failed: {}", errno);
             return std::nullopt;
+        }
+        if (fds[1].revents & POLLIN) {
+            return std::nullopt;
+        }
+        if (fds[0].revents) {
+            sd_journal_process(journal_);
         }
     }
     CollectorEvent event;
@@ -152,6 +184,12 @@ std::optional<CollectorEvent> SubproccessCollector::readEvent() {
         return std::nullopt;
     }
     return event;
+}
+
+void SubproccessCollector::stop() {
+    if (child.running()) {
+        child.terminate();
+    }
 }
 
 SubproccessCollector::~SubproccessCollector() {

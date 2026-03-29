@@ -107,9 +107,9 @@ EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::str
 
 void EventLoop::readerLoop(ICollector& collector) {
     while (running) {
-        auto event = collector.readEvent();  // блокируется — но в своём потоке
+        auto event = collector.readEvent();
         if (!event) {
-            break;  // процесс завершился
+            break;
         }
         eventQueue_.push(std::move(*event));
     }
@@ -153,7 +153,12 @@ void EventLoop::run() {
     spdlog::info("Event loop stopped");
 }
 
-void EventLoop::stop() { running = false; }
+void EventLoop::stop() {
+    running = false;
+    for (auto& [name, collector] : collectors) {
+        collector->stop();
+    }
+}
 
 NodeInfo EventLoop::getNodeInfo() const {
     NodeInfo info;

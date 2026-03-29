@@ -50,6 +50,7 @@ class ICollector {
 public:
     virtual ~ICollector() = default;
     virtual std::optional<CollectorEvent> readEvent() = 0;
+    virtual void stop() {}
 };
 
 class JournalCollector : public ICollector {
@@ -57,9 +58,11 @@ public:
     explicit JournalCollector(const std::string_view& unit);
     ~JournalCollector();
     std::optional<CollectorEvent> readEvent() override;
+    void stop() override;
 
 private:
     sd_journal* journal_ = nullptr;
+    int stop_pipe_[2] = {-1, -1};
 };
 
 class SubproccessCollector : public ICollector {
@@ -67,6 +70,7 @@ public:
     explicit SubproccessCollector(const std::string& cmd, const std::vector<std::string>& args);
     ~SubproccessCollector();
     std::optional<CollectorEvent> readEvent() override;
+    void stop() override;
 
 private:
     bp::child child;

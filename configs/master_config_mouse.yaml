@@ -1,5 +1,5 @@
 global:
-  node: "zip-bookworm"
+  node: "mouse-d12"
   sync_regime: "master"
 settings:
   poll_timeout_ms: 1000
@@ -9,7 +9,7 @@ temperature:
   sensors:
     - name: "coretemp"
 network:
-  interface_name: "eth1"
+  interface_name: "enp2s0"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
@@ -18,12 +18,12 @@ services:
   ptp4l:
     on: true
     source: "journal"
-    dev: "eth1"
+    dev: "enp2s0"
   phc2sys:
     on: true
     source: "journal"
-    dev: "eth1"
+    dev: "enp2s0"
   ppswatch:
     on: true
     source: "subproccess"
-    dev: "/dev/pps2"
+    dev: "/dev/stand/pps"
