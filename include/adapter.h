@@ -4,6 +4,7 @@
 
 #include <zmq.hpp>
 
+#include "collector.h"
 #include "metrics.pb.h"
 #include "system_metrics.h"
 
@@ -18,6 +19,8 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
 MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node_name);
 
 MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node);
+
+MetricsWrapper to_port_event(const PortEvent& internal, const std::string& node);
 }  // namespace converters
 
 class IAdapter {
@@ -28,6 +31,7 @@ public:
     virtual bool send_pps_statistics(const PPSStats& ppsStats, const std::string& node) = 0;
     virtual bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) = 0;
     virtual bool send_node_info(const NodeInfo& info, const std::string& node) = 0;
+    virtual bool send_ptp4l_port_event(const PortEvent& event, const std::string& node) = 0;
 };
 
 class ZMQAdapter : public IAdapter {
@@ -39,6 +43,7 @@ public:
     bool send_pps_statistics(const PPSStats& ppsStats, const std::string& node) override;
     bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) override;
     bool send_node_info(const NodeInfo& info, const std::string& node) override;
+    bool send_ptp4l_port_event(const PortEvent& event, const std::string& node) override;
 
 private:
     std::unique_ptr<zmq::context_t> context_;

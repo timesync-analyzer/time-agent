@@ -70,6 +70,7 @@ EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::str
             portEvent->unit = event.unit;
             spdlog::info("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
                          portEvent->toState, portEvent->trigger);
+            adapter.send_ptp4l_port_event(*portEvent, node);
             return;
         }
         spdlog::debug("[ptp4l] unhandled: {}", event.msg);

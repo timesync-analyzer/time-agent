@@ -4,6 +4,7 @@
 
 #include <thread>
 
+#include "collector.h"
 #include "metrics.pb.h"
 #include "system_metrics.h"
 #include "timestamp_utils.h"
@@ -46,20 +47,20 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
 
     auto* metrics = metrics_wrapper.mutable_system();
 
-    auto* cpu = metrics->mutable_cpustats();
+    auto* cpu = metrics->mutable_cpu_stats();
     cpu->set_usage_percent(internal.cpuStats.usage_percent);
     cpu->set_context_switches(internal.cpuStats.context_switches);
     cpu->set_interrupts(internal.cpuStats.interrupts);
     cpu->set_softirqs(internal.cpuStats.softirqs);
 
-    auto* mem = metrics->mutable_memorystats();
+    auto* mem = metrics->mutable_memory_stats();
     mem->set_mem_available_kb(internal.memoryStats.mem_available_kb);
     mem->set_mem_free_kb(internal.memoryStats.mem_free_kb);
     mem->set_swap_total_kb(internal.memoryStats.swap_total_kb);
     mem->set_swap_free_kb(internal.memoryStats.swap_free_kb);
     mem->set_buffers_kb(internal.memoryStats.buffers_kb);
 
-    auto* net = metrics->mutable_networkstats();
+    auto* net = metrics->mutable_network_stats();
     net->set_rx_packets(internal.networkStats.rx_packets);
     net->set_tx_packets(internal.networkStats.tx_packets);
     net->set_rx_dropped(internal.networkStats.rx_dropped);
@@ -68,7 +69,7 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
     net->set_tx_errors(internal.networkStats.tx_errors);
     net->set_collisions(internal.networkStats.collisions);
 
-    auto* temp = metrics->mutable_temperaturestats();
+    auto* temp = metrics->mutable_temperature_stats();
     for (const auto& zone : internal.temperatureStats.zonesReadings) {
         auto* reading = temp->add_zones_readings();
         reading->set_sensor(zone.sensor);
@@ -101,6 +102,22 @@ MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node)
     auto* metrics = metrics_wrapper.mutable_pps();
 
     metrics->set_offset_ns(internal.offset);
+    return metrics_wrapper;
+}
+
+MetricsWrapper to_port_event(const PortEvent& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP4L_PORT_EVENT);
+    metrics_wrapper.set_node_name(node);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
+    auto* event = metrics_wrapper.mutable_ptp4l_port_event();
+
+    event->set_port(internal.portNumber);
+    event->set_interface(internal.portName);
+    event->set_from_state(internal.fromState);
+    event->set_to_state(internal.toState);
+    event->set_event_trigger(internal.trigger);
+
     return metrics_wrapper;
 }
 
@@ -139,6 +156,11 @@ bool ZMQAdapter::send_node_info(const NodeInfo& info, const std::string& node) {
 
 bool ZMQAdapter::send_sys_statistics(const SystemStats& sysStats, const std::string& node) {
     auto metrics = converters::to_system_metrics(sysStats, node);
+    return send_impl(metrics);
+}
+
+bool ZMQAdapter::send_ptp4l_port_event(const PortEvent& event, const std::string& node) {
+    auto metrics = converters::to_port_event(event, node);
     return send_impl(metrics);
 }
 

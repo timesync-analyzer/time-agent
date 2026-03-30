@@ -26,8 +26,8 @@ std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) cons
     return std::nullopt;
 }
 
-std::optional<Ptp4lPortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) const {
-    Ptp4lPortEvent res;
+std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) const {
+    PortEvent res;
     double timestamp;
     char portName[128], fromState[64], toState[64], trigger[128];
     if (sscanf(msg.c_str(), "ptp4l[%lf]: port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,

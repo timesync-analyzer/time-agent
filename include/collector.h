@@ -19,7 +19,7 @@ struct CollectorEvent {
     std::string msg;
 };
 
-struct Ptp4lPortEvent {
+struct PortEvent {
     std::string unit;
     uint64_t timestamp_us = 0;
     int portNumber = 0;
@@ -32,7 +32,7 @@ struct Ptp4lPortEvent {
 class Ptp4lParser {
 public:
     std::optional<Ptp4lStats> parseMetrics(const std::string& msg) const;
-    std::optional<Ptp4lPortEvent> parsePortEvent(const std::string& msg) const;
+    std::optional<PortEvent> parsePortEvent(const std::string& msg) const;
 };
 
 class Phc2SysParser {
