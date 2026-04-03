@@ -9,7 +9,7 @@ temperature:
   sensors:
     - name: "coretemp"
 network:
-  interface_name: "enp4s0"
+  interface_name: "rteth0"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
@@ -18,11 +18,11 @@ services:
   ptp4l:
     on: true
     source: "journal"
-    dev: "enp4s0"
+    dev: "rteth0"
   phc2sys:
     on: true
     source: "subproccess"
-    dev: "enp4s0"
+    dev: "rteth0"
   ppswatch:
     on: true
     source: "subproccess"
