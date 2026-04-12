@@ -1,5 +1,5 @@
 global:
-  node: "hawk-d12"
+  node: "mouse-d12"
   sync_regime: "slave"
 settings:
   poll_timeout_ms: 1000
@@ -8,8 +8,6 @@ settings:
 temperature:
   sensors:
     - name: "coretemp"
-network:
-  interface_name: "eth1"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
@@ -21,9 +19,9 @@ services:
     dev: "rteth0"
   phc2sys:
     on: true
-    source: "subproccess"
+    source: "journal"
     dev: "rteth0"
   ppswatch:
     on: true
     source: "subproccess"
-    dev: "/dev/pps2"
+    dev: "/dev/stand/pps"

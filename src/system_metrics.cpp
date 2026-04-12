@@ -1,17 +1,19 @@
-#include "system_metrics.h"
-
 #include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <fstream>
+#include <optional>
+
+#include "system_metrics.h"
 
 SysMetricsCollector::SysMetricsCollector(const AppConfig& config, const SystemPaths& paths)
     : temperatureCollector(config.configTemperatureCollector.sensors, paths.hwmon),
-      networkCollector(config.configNetworkCollector.interface_name, paths.netStats),
       cpuCollector(paths.procStat),
       memoryCollector(paths.procMeminfo) {
     spdlog::debug("SysMetricsCollector initialized");
 }
+
+void SysMetricsCollector::setInterface(const std::string& interface) { networkCollector.setInterface(interface); }
 
 SystemStats SysMetricsCollector::collect() {
     SystemStats metrics;
@@ -124,8 +126,11 @@ std::optional<TemperatureStats> TemperatureCollector::collect() {
     return metrics;
 }
 
-NetworkCollector::NetworkCollector(const std::string& interface, const std::string& netStatsBase)
-    : interface_(interface), pathToStatistics_(netStatsBase + "/" + interface + "/statistics") {
+NetworkCollector::NetworkCollector(const std::string& netStatsBase) : netStatsBase_(netStatsBase) {}
+
+void NetworkCollector::setInterface(const std::string& interface) {
+    interface_ = interface;
+    pathToStatistics_ = netStatsBase_ + "/" + interface + "/statistics";
     metricToPath_["rx_packets"] = pathToStatistics_ + "/rx_packets";
     metricToPath_["tx_packets"] = pathToStatistics_ + "/tx_packets";
     metricToPath_["rx_dropped"] = pathToStatistics_ + "/rx_dropped";
@@ -136,6 +141,10 @@ NetworkCollector::NetworkCollector(const std::string& interface, const std::stri
 }
 
 std::optional<NetworkStats> NetworkCollector::collect() {
+    if (interface_.empty()) {
+        return std::nullopt;
+    }
+
     NetworkStats metrics;
     std::unordered_map<std::string, uint64_t*> metricMap = {
         {"rx_packets", &metrics.rx_packets}, {"tx_packets", &metrics.tx_packets}, {"rx_dropped", &metrics.rx_dropped},

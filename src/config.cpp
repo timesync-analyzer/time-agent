@@ -12,14 +12,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
             if (global["node"]) {
                 config.globalConfig.node = global["node"].as<std::string>();
             }
-            if (global["sync_regime"]) {
-                const auto regime = global["sync_regime"].as<std::string>();
-                if (regime != "master" && regime != "slave") {
-                    spdlog::error("Invalid sync_regime '{}': must be 'master' or 'slave'", regime);
-                    return std::nullopt;
-                }
-                config.globalConfig.sync_regime = regime;
-            }
         }
 
         if (root["settings"]) {
@@ -41,10 +33,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
                     config.configTemperatureCollector.sensors.emplace(sensor["name"].as<std::string>());
                 }
             }
-        }
-
-        if (root["network"] && root["network"]["interface_name"]) {
-            config.configNetworkCollector.interface_name = root["network"]["interface_name"].as<std::string>();
         }
 
         if (root["zmq"]) {

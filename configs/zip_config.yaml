@@ -8,8 +8,6 @@ settings:
 temperature:
   sensors:
     - name: "coretemp"
-network:
-  interface_name: "rteth0"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
@@ -21,7 +19,7 @@ services:
     dev: "rteth0"
   phc2sys:
     on: true
-    source: "subproccess"
+    source: "journal"
     dev: "rteth0"
   ppswatch:
     on: true

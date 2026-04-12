@@ -42,9 +42,6 @@ std::string resolveInterfaceIP(const std::string& iface) {
 EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
                      const AppConfig& config)
     : node(config.globalConfig.node),
-      ip(resolveInterfaceIP(config.configNetworkCollector.interface_name)),
-      node_type(config.globalConfig.sync_regime == "master" ? NODE_TYPE_MASTER : NODE_TYPE_SLAVE),
-      net_interface(config.configNetworkCollector.interface_name),
       collectors(std::move(collectors)),
       adapter(std::move(adapter)),
       sysMetricsCollector(config),
@@ -56,7 +53,7 @@ EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>
 EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::string& node) {
     HandlerMap handlers;
 
-    handlers["ptp4l"] = [parser = std::make_shared<Ptp4lParser>(), &adapter, node](const CollectorEvent& event) {
+    handlers["ptp4l"] = [parser = std::make_shared<Ptp4lParser>(), &adapter, node, this](const CollectorEvent& event) {
         if (auto metrics = parser->parseMetrics(event.msg)) {
             metrics->timestamp_us = event.ts_usec;
             metrics->unit = event.unit;
@@ -70,6 +67,11 @@ EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::str
             portEvent->unit = event.unit;
             spdlog::info("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
                          portEvent->toState, portEvent->trigger);
+            if (portEvent->toState == "SLAVE" || portEvent->toState == "MASTER" || portEvent->toState == "GRAND_MASTER") {
+                net_interface = portEvent->portName;
+                ip = resolveInterfaceIP(net_interface);
+                sysMetricsCollector.setInterface(net_interface);
+            }
             adapter.send_ptp4l_port_event(*portEvent, node);
             return;
         }
@@ -163,7 +165,6 @@ void EventLoop::stop() {
 
 NodeInfo EventLoop::getNodeInfo() const {
     NodeInfo info;
-    info.set_node_type(node_type);
     info.set_ip_address(ip);
     info.set_net_interface(net_interface);
     return info;

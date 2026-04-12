@@ -28,43 +28,26 @@ void checkJournalAccess() {
 }
 }  // namespace
 
-std::unique_ptr<ICollector> makeCollector(const ServiceConfig& cfg, const std::string& regime) {
-    spdlog::info("Create {} {} collector (regime: {}), interface {}", cfg.name, cfg.source, regime, cfg.dev);
+std::unique_ptr<ICollector> makeCollector(const ServiceConfig& cfg) {
+    spdlog::info("Create {} {} collector interface {}", cfg.name, cfg.source, cfg.dev);
 
     if (cfg.name == "ptp4l") {
         if (cfg.source == "subproccess") {
-            if (regime == "slave") {
                 return std::make_unique<SubproccessCollector>(
-                    "ptp4l", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "ptp4l", "-i", cfg.dev, "-s", "-m",
-                                                      "--step_threshold", "0.000005"});
-            } else if (regime == "master") {
-                return std::make_unique<SubproccessCollector>(
-                    "ptp4l", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "ptp4l", "-i", cfg.dev, "-m", "--step_threshold",
-                                                      "0.000005"});
-            }
+                    "ptp4l", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "ptp4l", "-i", cfg.dev, "-s", "-m"});
         } else if (cfg.source == "journal") {
             return std::make_unique<JournalCollector>("ptp4l");
         }
     } else if (cfg.name == "phc2sys") {
         if (cfg.source == "subproccess") {
-            if (regime == "slave") {
-                spdlog::debug("create slave phc2sys");
-                return std::make_unique<SubproccessCollector>(
-                    "phc2sys",
-                    std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "phc2sys", "-s", cfg.dev, "-c", "CLOCK_REALTIME", "-w",
-                                             "--free_running", "1", "-m", "--step_threshold", "0.000005"});
-            } else if (regime == "master") {
-                spdlog::debug("create master phc2sys");
-                return std::make_unique<SubproccessCollector>(
-                    "phc2sys", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "phc2sys", "-s", "CLOCK_REALTIME", "-c",
-                                                        cfg.dev, "-w", "-m", "--step_threshold", "0.000005"});
-            }
+            return std::make_unique<SubproccessCollector>(
+                "phc2sys", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "/usr/local/sbin/phc2sys", "-a", "-r", "-r", "-m",
+                                                    "--free_running", "1", "-l 6"});
         } else if (cfg.source == "journal") {
             return std::make_unique<JournalCollector>("phc2sys");
         }
     } else if (cfg.name == "ppswatch") {
-        if (cfg.source == "subproccess" && regime == "slave") {
-            spdlog::debug("why?");
+        if (cfg.source == "subproccess") {
             return std::make_unique<SubproccessCollector>(
                 "ppswatch", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "/usr/bin/ppswatch", cfg.dev});
         }
@@ -91,7 +74,7 @@ int main(int argc, char* argv[]) {
         spdlog::debug("on {}", cfg.on);
         if (cfg.on) {
             try {
-                collectors[cfg.name] = makeCollector(cfg, config.globalConfig.sync_regime);
+                collectors[cfg.name] = makeCollector(cfg);
             } catch (...) {
                 continue;
             }

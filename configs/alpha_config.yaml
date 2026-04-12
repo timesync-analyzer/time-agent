@@ -1,5 +1,5 @@
 global:
-  node: "mouse-d12"
+  node: "alpha"
   sync_regime: "master"
 settings:
   poll_timeout_ms: 1000
@@ -8,8 +8,6 @@ settings:
 temperature:
   sensors:
     - name: "coretemp"
-network:
-  interface_name: "rteth0"
 zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000

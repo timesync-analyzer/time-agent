@@ -106,12 +106,14 @@ private:
 
 class NetworkCollector : public IMetricCollector<NetworkStats> {
 public:
-    NetworkCollector(const std::string& interface, const std::string& netStatsBase = "/sys/class/net");
+    NetworkCollector(const std::string& netStatsBase = "/sys/class/net");
     std::optional<NetworkStats> collect() override;
+    void setInterface(const std::string& interface);
 
 private:
-    std::string interface_;
-    std::string pathToStatistics_;
+    std::string interface_{""};
+    std::string netStatsBase_{""};
+    std::string pathToStatistics_{""};
     std::unordered_map<std::string, std::string> metricToPath_;
 };
 
@@ -139,6 +141,7 @@ class SysMetricsCollector {
 public:
     SysMetricsCollector(const AppConfig& config, const SystemPaths& paths = SystemPaths{});
     SystemStats collect();
+    void setInterface(const std::string& interface);
 
 private:
     TemperatureCollector temperatureCollector;

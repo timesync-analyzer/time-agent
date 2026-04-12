@@ -23,6 +23,10 @@ std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) cons
                &res.path_delay) >= 3) {
         return res;
     }
+    if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp,
+               &res.offset, &res.freq, &res.path_delay) >= 3) {
+        return res;
+    }
     return std::nullopt;
 }
 
@@ -33,6 +37,8 @@ std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) con
     if (sscanf(msg.c_str(), "ptp4l[%lf]: port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6 ||
         sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
+               fromState, toState, trigger) == 6 ||
+        sscanf(msg.c_str(), "[%lf] [%*[^]]] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6) {
         res.portName = portName;
         res.fromState = fromState;
@@ -51,6 +57,10 @@ std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) 
         return res;
     }
     if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
+               &res.path_delay) >= 3) {
+        return res;
+    }
+    if (sscanf(msg.c_str(), "[%lf] %*s rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
                &res.path_delay) >= 3) {
         return res;
     }

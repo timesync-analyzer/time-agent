@@ -56,7 +56,6 @@ TEST_F(ConfigTest, LoadValidConfig) {
     EXPECT_EQ(config->monitorConfig.poll_timeout_ms, 2000);
     EXPECT_EQ(config->monitorConfig.log_level, "debug");
     EXPECT_EQ(config->monitorConfig.sys_metric_update_freq, 5);
-    EXPECT_EQ(config->configNetworkCollector.interface_name, "enp0s3");
     EXPECT_EQ(config->configZMQ.endpoint, "tcp://localhost:5555");
     EXPECT_EQ(config->configZMQ.queue_size, 100);
 }

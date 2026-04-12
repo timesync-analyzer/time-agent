@@ -25,7 +25,7 @@ private:
     using ParserFunc = std::function<void(const CollectorEvent&)>;
     using HandlerMap = std::unordered_map<std::string, ParserFunc>;
 
-    static HandlerMap buildHandlers(IAdapter& adapter, const std::string& node);
+    HandlerMap buildHandlers(IAdapter& adapter, const std::string& node);
     NodeInfo getNodeInfo() const;
     void readerLoop(ICollector& collector);
 

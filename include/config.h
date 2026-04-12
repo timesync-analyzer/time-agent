@@ -7,7 +7,6 @@
 
 struct GlobalConfig {
     std::string node;
-    std::string sync_regime;
     bool need_pps;
 };
 
@@ -28,10 +27,6 @@ struct TemperatureCollectorConfig {
     std::unordered_set<std::string> sensors;
 };
 
-struct NetworkConfig {
-    std::string interface_name;
-};
-
 struct ZMQConfig {
     std::string endpoint;
     int queue_size;
@@ -43,7 +38,6 @@ struct AppConfig {
     MonitoringConfig monitorConfig;
     std::vector<ServiceConfig> service;
     TemperatureCollectorConfig configTemperatureCollector;
-    NetworkConfig configNetworkCollector;
     ZMQConfig configZMQ;
 };
 

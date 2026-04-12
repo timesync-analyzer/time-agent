@@ -89,7 +89,6 @@ MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node) {
 
     node_info->set_net_interface(internal.net_interface());
     node_info->set_ip_address(internal.ip_address());
-    node_info->set_node_type(internal.node_type());
 
     return metrics_wrapper;
 }
