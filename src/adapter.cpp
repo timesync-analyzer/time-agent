@@ -80,19 +80,6 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
     return metrics_wrapper;
 }
 
-MetricsWrapper to_node_info(const NodeInfo& internal, const std::string& node) {
-    MetricsWrapper metrics_wrapper;
-    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_NODE_INFO);
-    metrics_wrapper.set_node_name(node);
-
-    NodeInfo* node_info = metrics_wrapper.mutable_node_info();
-
-    node_info->set_net_interface(internal.net_interface());
-    node_info->set_ip_address(internal.ip_address());
-
-    return metrics_wrapper;
-}
-
 MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node) {
     MetricsWrapper metrics_wrapper;
     metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PPS);
@@ -145,11 +132,6 @@ bool ZMQAdapter::send_phc2sys_statistics(const Phc2SysStats& phc2sys, const std:
 
 bool ZMQAdapter::send_pps_statistics(const PPSStats& ppsStats, const std::string& node) {
     auto metrics = converters::to_pps_metrics(ppsStats, node);
-    return send_impl(metrics);
-}
-
-bool ZMQAdapter::send_node_info(const NodeInfo& info, const std::string& node) {
-    auto metrics = converters::to_node_info(info, node);
     return send_impl(metrics);
 }
 

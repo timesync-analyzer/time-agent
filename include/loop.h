@@ -26,13 +26,12 @@ private:
     using HandlerMap = std::unordered_map<std::string, ParserFunc>;
 
     HandlerMap buildHandlers(IAdapter& adapter, const std::string& node);
-    NodeInfo getNodeInfo() const;
     void readerLoop(ICollector& collector);
 
-    std::string node;
-    std::string ip;
-    NodeType node_type;
-    std::string net_interface;
+    std::string node{""};
+    std::string ip{""};
+    std::string node_type{""};
+    std::string net_interface{""};
 
     std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors;
     std::unique_ptr<IAdapter> adapter;

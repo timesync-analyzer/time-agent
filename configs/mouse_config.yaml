@@ -22,6 +22,6 @@ services:
     source: "journal"
     dev: "rteth0"
   ppswatch:
-    on: true
+    on: false
     source: "subproccess"
     dev: "/dev/stand/pps"

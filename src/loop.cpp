@@ -12,33 +12,6 @@
 #include "metrics.pb.h"
 #include "timestamp_utils.h"
 
-namespace {
-
-std::string resolveInterfaceIP(const std::string& iface) {
-    struct ifaddrs* ifap = nullptr;
-    if (getifaddrs(&ifap) != 0) {
-        spdlog::warn("getifaddrs failed: could not enumerate network interfaces");
-        return "";
-    }
-    std::unique_ptr<struct ifaddrs, decltype(&freeifaddrs)> guard(ifap, freeifaddrs);
-
-    for (auto* ifa = ifap; ifa != nullptr; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
-        if (iface == ifa->ifa_name) {
-            char buf[INET_ADDRSTRLEN];
-            auto* sa = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr);
-            inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf));
-            spdlog::debug("Resolved IP for interface '{}': {}", iface, buf);
-            return buf;
-        }
-    }
-
-    spdlog::warn("Interface '{}' not found or has no IPv4 address", iface);
-    return "0.0.0.0";
-}
-
-}  // namespace
-
 EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
                      const AppConfig& config)
     : node(config.globalConfig.node),
@@ -65,12 +38,11 @@ EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::str
         if (auto portEvent = parser->parsePortEvent(event.msg)) {
             portEvent->timestamp_us = event.ts_usec;
             portEvent->unit = event.unit;
-            spdlog::info("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
+            spdlog::debug("[ptp4l] port {} ({}) {} -> {} ({})", portEvent->portNumber, portEvent->portName, portEvent->fromState,
                          portEvent->toState, portEvent->trigger);
-            if (portEvent->toState == "SLAVE" || portEvent->toState == "MASTER" || portEvent->toState == "GRAND_MASTER") {
-                net_interface = portEvent->portName;
-                ip = resolveInterfaceIP(net_interface);
-                sysMetricsCollector.setInterface(net_interface);
+            if (portEvent->portName.find('/') == std::string::npos) {
+                spdlog::info("set new watching interface {}", portEvent->portName);
+                sysMetricsCollector.setInterface(portEvent->portName);
             }
             adapter.send_ptp4l_port_event(*portEvent, node);
             return;
@@ -120,7 +92,6 @@ void EventLoop::readerLoop(ICollector& collector) {
 
 void EventLoop::run() {
     spdlog::info("Event loop started");
-    adapter->send_node_info(getNodeInfo(), node);
 
     running = true;
 
@@ -161,11 +132,4 @@ void EventLoop::stop() {
     for (auto& [name, collector] : collectors) {
         collector->stop();
     }
-}
-
-NodeInfo EventLoop::getNodeInfo() const {
-    NodeInfo info;
-    info.set_ip_address(ip);
-    info.set_net_interface(net_interface);
-    return info;
 }
