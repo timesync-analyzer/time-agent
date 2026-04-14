@@ -1,6 +1,5 @@
 global:
   node: "alpha"
-  sync_regime: "master"
 settings:
   poll_timeout_ms: 1000
   sys_metric_update_freq: 15

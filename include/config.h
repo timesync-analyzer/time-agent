@@ -7,7 +7,6 @@
 
 struct GlobalConfig {
     std::string node;
-    bool need_pps;
 };
 
 struct ServiceConfig {
@@ -33,7 +32,7 @@ struct ZMQConfig {
     int timeout_after_close_ms;
 };
 
-struct AppConfig {
+struct AgentConfig {
     GlobalConfig globalConfig;
     MonitoringConfig monitorConfig;
     std::vector<ServiceConfig> service;
@@ -43,7 +42,7 @@ struct AppConfig {
 
 class ConfigLoader {
 public:
-    static std::optional<AppConfig> load(const std::string& path);
-    static AppConfig loadOrDefault(const std::string& path);
-    static AppConfig defaultConfig();
+    static std::optional<AgentConfig> load(const std::string& path);
+    static AgentConfig loadOrDefault(const std::string& path);
+    static AgentConfig defaultConfig();
 };

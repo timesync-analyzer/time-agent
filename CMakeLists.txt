@@ -9,7 +9,20 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+add_compile_options(-Wall -Wextra -Wpedantic -fno-omit-frame-pointer)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O2 -DNDEBUG)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-O0 -g3 -DDEBUG -fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SYSTEMD REQUIRED libsystemd)
@@ -32,7 +45,7 @@ target_link_libraries(proto_lib PUBLIC ${Protobuf_LIBRARIES})
 add_library(journal_collector_lib
     src/collector.cpp
     src/config.cpp
-    src/loop.cpp
+    src/agent.cpp
     src/system_metrics.cpp
     src/adapter.cpp
 )

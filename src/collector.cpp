@@ -1,42 +1,46 @@
-#include "collector.h"
-
-#include <fcntl.h>
-#include <poll.h>
 #include <spdlog/spdlog.h>
 #include <systemd/sd-journal.h>
-#include <unistd.h>
 
 #include <chrono>
 #include <optional>
 #include <stdexcept>
 
+#include "collector.h"
+
 // не забыть включить ntpd service
 
 std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) const {
-    Ptp4lStats res;
+    bool hasMasterOffset = msg.find("master offset") != std::string::npos;
+    bool hasRms = !hasMasterOffset && msg.find(" rms ") != std::string::npos;
+    if (!hasMasterOffset && !hasRms) {
+        return std::nullopt;
+    }
+    Ptp4lStats res{};
     double timestamp;
-    if (sscanf(msg.c_str(), "ptp4l[%lf]: master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
-               &res.freq, &res.path_delay) >= 3) {
-        return res;
-    }
-    if (sscanf(msg.c_str(), "[%lf] master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
-               &res.path_delay) >= 3) {
-        return res;
-    }
-    if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp,
-               &res.offset, &res.freq, &res.path_delay) >= 3) {
-        return res;
+    if (hasMasterOffset) {
+        // Both journal and subprocess output use the same "[ts] master offset ..." format
+        if (sscanf(msg.c_str(), "[%lf] master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
+                   &res.freq, &res.path_delay) == 5) {
+            return res;
+        }
+    } else {
+        // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
+        if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
+                   &res.path_delay) == 4) {
+            return res;
+        }
     }
     return std::nullopt;
 }
 
 std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) const {
+    if (msg.find("port ") == std::string::npos || msg.find(" to ") == std::string::npos) {
+        return std::nullopt;
+    }
     PortEvent res;
     double timestamp;
     char portName[128], fromState[64], toState[64], trigger[128];
-    if (sscanf(msg.c_str(), "ptp4l[%lf]: port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
-               fromState, toState, trigger) == 6 ||
-        sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
+    if (sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6 ||
         sscanf(msg.c_str(), "[%lf] [%*[^]]] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6) {
@@ -50,18 +54,16 @@ std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) con
 }
 
 std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) const {
-    Phc2SysStats res;
+    Phc2SysStats res{};
     double timestamp;
-    if (sscanf(msg.c_str(), "phc2sys[%lf]: %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state,
-               &res.freq, &res.path_delay) >= 3) {
-        return res;
-    }
-    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
-               &res.path_delay) >= 3) {
-        return res;
-    }
+    // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
     if (sscanf(msg.c_str(), "[%lf] %*s rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
-               &res.path_delay) >= 3) {
+               &res.path_delay) == 4) {
+        return res;
+    }
+    // Regular offset line: timestamp + 4 data fields (offset, state, freq, path_delay)
+    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
+               &res.path_delay) == 5) {
         return res;
     }
     return std::nullopt;
@@ -79,17 +81,11 @@ std::optional<PPSStats> PPSParser::parseMetrics(const std::string& msg) const {
     return std::nullopt;
 }
 
-JournalCollector::JournalCollector(const std::string_view& unit) {
+JournalCollector::JournalCollector(const std::string_view& unit) : unit_(unit) {
     spdlog::debug("use unit {}", unit);
-
-    if (pipe2(stop_pipe_, O_CLOEXEC) < 0) {
-        throw std::runtime_error("pipe2 failed: " + std::to_string(errno));
-    }
 
     int ret = sd_journal_open(&journal_, SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
-        close(stop_pipe_[0]);
-        close(stop_pipe_[1]);
         throw std::runtime_error("sd_journal_open failed: " + std::to_string(-ret));
     }
 
@@ -112,17 +108,10 @@ JournalCollector::~JournalCollector() {
     if (journal_) {
         sd_journal_close(journal_);
     }
-    if (stop_pipe_[0] >= 0) {
-        close(stop_pipe_[0]);
-    }
-    if (stop_pipe_[1] >= 0) {
-        close(stop_pipe_[1]);
-    }
 }
 
 void JournalCollector::stop() {
-    char buf = 1;
-    write(stop_pipe_[1], &buf, 1);
+    stop_requested_ = true;
 }
 
 std::optional<CollectorEvent> JournalCollector::readEvent() {
@@ -136,33 +125,22 @@ std::optional<CollectorEvent> JournalCollector::readEvent() {
             return std::nullopt;
         }
 
-        int jfd = sd_journal_get_fd(journal_);
-        struct pollfd fds[2] = {{jfd, static_cast<short>(sd_journal_get_events(journal_)), 0}, {stop_pipe_[0], POLLIN, 0}};
-        ret = poll(fds, 2, 1000);
+        if (stop_requested_) {
+            return std::nullopt;
+        }
+
+        ret = sd_journal_wait(journal_, 1'000'000);
         if (ret < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            spdlog::error("poll failed: {}", errno);
+            spdlog::error("sd_journal_wait failed: {}", ret);
             return std::nullopt;
-        }
-        if (fds[1].revents & POLLIN) {
-            return std::nullopt;
-        }
-        if (fds[0].revents) {
-            sd_journal_process(journal_);
         }
     }
     CollectorEvent event;
     sd_journal_get_realtime_usec(journal_, &event.ts_usec);
+    event.unit = std::string_view(unit_);
 
     const void* data;
     size_t len;
-
-    if (sd_journal_get_data(journal_, "_COMM", &data, &len) == 0) {
-        const char* raw = static_cast<const char*>(data);
-        event.unit = std::string(raw + sizeof("_COMM=") - 1, len - (sizeof("_COMM=") - 1));
-    }
 
     if (sd_journal_get_data(journal_, "MESSAGE", &data, &len) == 0) {
         const char* raw = static_cast<const char*>(data);
@@ -186,7 +164,7 @@ std::optional<CollectorEvent> SubproccessCollector::readEvent() {
     CollectorEvent event{};
     auto now = std::chrono::system_clock::now();
     event.ts_usec = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-    event.unit = unit;
+    event.unit = std::string_view(unit);
     if (!getline(stream, event.msg)) {
         return std::nullopt;
     }

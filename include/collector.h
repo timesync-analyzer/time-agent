@@ -1,6 +1,7 @@
 #pragma once
 #include <systemd/sd-journal.h>
 
+#include <atomic>
 #include <boost/process.hpp>
 #include <boost/process/detail/child_decl.hpp>
 #include <boost/process/pipe.hpp>
@@ -15,7 +16,7 @@ namespace bp = boost::process;
 
 struct CollectorEvent {
     uint64_t ts_usec;
-    std::string unit;
+    std::string_view unit;
     std::string msg;
 };
 
@@ -61,8 +62,9 @@ public:
     void stop() override;
 
 private:
+    std::string unit_;
     sd_journal* journal_ = nullptr;
-    int stop_pipe_[2] = {-1, -1};
+    std::atomic<bool> stop_requested_{false};
 };
 
 class SubproccessCollector : public ICollector {

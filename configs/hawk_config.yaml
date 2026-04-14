@@ -1,6 +1,5 @@
 global:
   node: "hawk-d12"
-  sync_regime: "slave"
 settings:
   poll_timeout_ms: 1000
   sys_metric_update_freq: 15

@@ -7,10 +7,10 @@
 #include "collector.h"
 #include "config.h"
 #include "logging.h"
-#include "loop.h"
+#include "agent.h"
 
 namespace {
-EventLoop* g_loop = nullptr;
+Agent* g_loop = nullptr;
 
 void signalHandler(int sig) {
     spdlog::info("Received signal {}, shutting down...", sig);
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         }
     }
     auto adapter = std::make_unique<ZMQAdapter>(config.configZMQ, config.globalConfig.node);
-    EventLoop loop(std::move(collectors), std::move(adapter), config);
+    Agent loop(std::move(collectors), std::move(adapter), config);
 
     g_loop = &loop;
     std::signal(SIGINT, signalHandler);

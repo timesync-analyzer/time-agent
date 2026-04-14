@@ -2,10 +2,10 @@
 
 #include <spdlog/spdlog.h>
 
-std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
+std::optional<AgentConfig> ConfigLoader::load(const std::string& path) {
     try {
         YAML::Node root = YAML::LoadFile(path);
-        AppConfig config;
+        AgentConfig config;
 
         if (root["global"]) {
             const auto& global = root["global"];
@@ -54,7 +54,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
                 ServiceConfig ptp4lConfig;
                 ptp4lConfig.name = "ptp4l";
                 ptp4lConfig.on = services["ptp4l"]["on"].as<bool>(false);
-                ptp4lConfig.dev = services["ptp4l"]["dev"].as<std::string>();
                 ptp4lConfig.source = services["ptp4l"]["source"].as<std::string>();
                 config.service.push_back(ptp4lConfig);
             }
@@ -62,7 +61,6 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
                 ServiceConfig phc2sysConfig;
                 phc2sysConfig.name = "phc2sys";
                 phc2sysConfig.on = services["phc2sys"]["on"].as<bool>(false);
-                phc2sysConfig.dev = services["phc2sys"]["dev"].as<std::string>();
                 phc2sysConfig.source = services["phc2sys"]["source"].as<std::string>();
                 config.service.push_back(phc2sysConfig);
             }
@@ -86,8 +84,8 @@ std::optional<AppConfig> ConfigLoader::load(const std::string& path) {
     }
 }
 
-AppConfig ConfigLoader::defaultConfig() {
-    AppConfig config;
+AgentConfig ConfigLoader::defaultConfig() {
+    AgentConfig config;
 
     config.monitorConfig.poll_timeout_ms = 1000;
     config.monitorConfig.log_level = "info";
@@ -95,7 +93,7 @@ AppConfig ConfigLoader::defaultConfig() {
     return config;
 }
 
-AppConfig ConfigLoader::loadOrDefault(const std::string& path) {
+AgentConfig ConfigLoader::loadOrDefault(const std::string& path) {
     auto config = load(path);
     if (config) {
         return *config;

@@ -1,4 +1,4 @@
-#include "loop.h"
+#include "agent.h"
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -12,18 +12,17 @@
 #include "metrics.pb.h"
 #include "timestamp_utils.h"
 
-EventLoop::EventLoop(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
-                     const AppConfig& config)
+Agent::Agent(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
+                     const AgentConfig& config)
     : node(config.globalConfig.node),
       collectors(std::move(collectors)),
       adapter(std::move(adapter)),
       sysMetricsCollector(config),
-      sysMetricUpdateFreq(config.monitorConfig.sys_metric_update_freq),
       pollTimeoutMs(config.monitorConfig.poll_timeout_ms) {
-    parsers_ = buildHandlers(*this->adapter, node);
+    handlers_ = buildHandlers(*this->adapter, node);
 }
 
-EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::string& node) {
+Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& node) {
     HandlerMap handlers;
 
     handlers["ptp4l"] = [parser = std::make_shared<Ptp4lParser>(), &adapter, node, this](const CollectorEvent& event) {
@@ -80,54 +79,59 @@ EventLoop::HandlerMap EventLoop::buildHandlers(IAdapter& adapter, const std::str
     return handlers;
 }
 
-void EventLoop::readerLoop(ICollector& collector) {
+void Agent::readerLoop(ICollector& collector, Handler handler) {
     while (running) {
         auto event = collector.readEvent();
         if (!event) {
             break;
         }
-        eventQueue_.push(std::move(*event));
+        std::lock_guard lock(adapterMutex_);
+        handler(*event);
     }
 }
 
-void EventLoop::run() {
+void Agent::sysMetricsLoop() {
+    while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(pollTimeoutMs));
+        if (!running) {
+            break;
+        }
+        SystemStats sysMetrics = sysMetricsCollector.collect();
+        sysMetrics.timestamp_us = timestamp_utils::now_us();
+        std::lock_guard lock(adapterMutex_);
+        adapter->send_sys_statistics(sysMetrics, node);
+    }
+}
+
+void Agent::run() {
     spdlog::info("Event loop started");
 
     running = true;
 
     for (auto& [name, collector] : collectors) {
-        readerThreads_.emplace_back([this, &collector = *collector]() { readerLoop(collector); });
-    }
-
-    SystemStats sysMetrics;
-    int iterCounter = 0;
-
-    while (running) {
-        while (auto event = eventQueue_.pop(std::chrono::milliseconds(pollTimeoutMs))) {
-            auto it = parsers_.find(event->unit);
-            if (it == parsers_.end()) {
-                spdlog::warn("No parser for unit: {}", event->unit);
-                continue;
-            }
-            it->second(*event);
-            ++iterCounter;
-            if (iterCounter >= sysMetricUpdateFreq) {
-                sysMetrics = sysMetricsCollector.collect();
-                sysMetrics.timestamp_us = timestamp_utils::now_us();
-                adapter->send_sys_statistics(sysMetrics, node);
-                iterCounter = 0;
-            }
+        auto it = handlers_.find(name);
+        if (it == handlers_.end()) {
+            spdlog::warn("No handler for collector: {}", name);
+            continue;
         }
+        readerThreads_.emplace_back([this, &collector = *collector, handler = it->second]() { readerLoop(collector, handler); });
     }
+
+    sysMetricsThread_ = std::thread([this]() { sysMetricsLoop(); });
 
     for (auto& t : readerThreads_) {
-        if (t.joinable()) t.join();
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+    if (sysMetricsThread_.joinable()) {
+        sysMetricsThread_.join();
     }
 
     spdlog::info("Event loop stopped");
 }
 
-void EventLoop::stop() {
+void Agent::stop() {
     running = false;
     for (auto& [name, collector] : collectors) {
         collector->stop();

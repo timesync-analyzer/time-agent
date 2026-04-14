@@ -65,9 +65,10 @@ bool ZMQAdapter::send_impl(const T& msg) {
     }
 
     try {
-        zmq::message_t zmq_msg(serialized.data(), serialized.size());
+        zmq::message_t zmq_msg(msg.ByteSizeLong());
+        msg.SerializeToArray(zmq_msg.data(), zmq_msg.size());
 
-        auto result = sender_->send(zmq_msg, zmq::send_flags::dontwait);
+        auto result = sender_->send(std::move(zmq_msg), zmq::send_flags::none);
         if (!result) {
             spdlog::warn("Queue full");
             return false;
