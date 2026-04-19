@@ -1,6 +1,6 @@
 #pragma once
 
-#include <collector.h>
+#include "collector.h"
 
 #include <atomic>
 #include <functional>
@@ -30,9 +30,6 @@ private:
     void sysMetricsLoop();
 
     std::string node{""};
-    std::string ip{""};
-    std::string node_type{""};
-    std::string net_interface{""};
 
     std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors;
     std::unique_ptr<IAdapter> adapter;

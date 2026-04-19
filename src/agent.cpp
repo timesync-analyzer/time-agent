@@ -12,6 +12,8 @@
 #include "metrics.pb.h"
 #include "timestamp_utils.h"
 
+#include "network_adapter_resolver.h"
+
 Agent::Agent(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
                      const AgentConfig& config)
     : node(config.globalConfig.node),
@@ -42,6 +44,12 @@ Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& nod
             if (portEvent->portName.find('/') == std::string::npos) {
                 spdlog::info("set new watching interface {}", portEvent->portName);
                 sysMetricsCollector.setInterface(portEvent->portName);
+                portEvent->adapterName = NetworkAdapterResolver::resolve(portEvent->portName);
+                if (!portEvent->adapterName.empty()) {
+                    spdlog::info("set new watching interface {} ({})", portEvent->portName, portEvent->adapterName);
+                } else {
+                    spdlog::info("set new watching interface {}", portEvent->portName);
+                }
             }
             adapter.send_ptp4l_port_event(*portEvent, node);
             return;
@@ -82,6 +90,7 @@ Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& nod
 void Agent::readerLoop(ICollector& collector, Handler handler) {
     while (running) {
         auto event = collector.readEvent();
+
         if (!event) {
             break;
         }

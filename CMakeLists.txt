@@ -26,11 +26,25 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SYSTEMD REQUIRED libsystemd)
+pkg_check_modules(LIBPCI QUIET libpci)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(cppzmq REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
+
+find_path(LIBPCI_INCLUDE_DIR
+    NAMES pci/pci.h
+    HINTS ${LIBPCI_INCLUDE_DIRS}
+)
+find_library(LIBPCI_LIBRARY
+    NAMES pci
+    HINTS ${LIBPCI_LIBRARY_DIRS}
+)
+
+if(NOT LIBPCI_INCLUDE_DIR OR NOT LIBPCI_LIBRARY)
+    message(FATAL_ERROR "libpci headers or library not found. Install libpci-dev (Debian/Ubuntu) or pciutils-devel (Fedora/RHEL).")
+endif()
 
 set(PROTO_FILES protocol/proto/metrics.proto)
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
@@ -46,17 +60,20 @@ add_library(journal_collector_lib
     src/collector.cpp
     src/config.cpp
     src/agent.cpp
+    src/network_adapter_resolver.cpp
     src/system_metrics.cpp
     src/adapter.cpp
 )
 
 target_include_directories(journal_collector_lib PUBLIC
     ${SYSTEMD_INCLUDE_DIRS}
+    ${LIBPCI_INCLUDE_DIR}
     include/
 )
 
 target_link_libraries(journal_collector_lib PUBLIC
     ${SYSTEMD_LIBRARIES}
+    ${LIBPCI_LIBRARY}
     yaml-cpp
     spdlog::spdlog
     proto_lib
@@ -65,6 +82,7 @@ target_link_libraries(journal_collector_lib PUBLIC
 
 target_compile_options(journal_collector_lib PUBLIC
     ${SYSTEMD_CFLAGS_OTHER}
+    ${LIBPCI_CFLAGS_OTHER}
 )
 
 add_executable(time_agent src/main.cpp)

@@ -102,6 +102,7 @@ MetricsWrapper to_port_event(const PortEvent& internal, const std::string& node)
     event->set_interface(internal.portName);
     event->set_from_state(internal.fromState);
     event->set_to_state(internal.toState);
+    event->set_adapter_name(internal.adapterName);
     event->set_event_trigger(internal.trigger);
 
     return metrics_wrapper;

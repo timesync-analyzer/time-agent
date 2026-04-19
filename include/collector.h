@@ -25,6 +25,7 @@ struct PortEvent {
     uint64_t timestamp_us = 0;
     int portNumber = 0;
     std::string portName;
+    std::string adapterName;
     std::string fromState;
     std::string toState;
     std::string trigger;
