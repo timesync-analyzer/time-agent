@@ -1,0 +1,11 @@
+[Unit]
+Description=Sync metrics collector from node
+Before=ptp4l.service
+
+[Service]
+ExecStart=/home/zloyaloha/time_agent /home/zloyaloha/ptp_analyzer/time-agent/configs/mouse_config.yaml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

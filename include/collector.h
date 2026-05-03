@@ -68,10 +68,10 @@ private:
     std::atomic<bool> stop_requested_{false};
 };
 
-class SubproccessCollector : public ICollector {
+class SubprocessCollector : public ICollector {
 public:
-    explicit SubproccessCollector(const std::string& cmd, const std::vector<std::string>& args);
-    ~SubproccessCollector();
+    explicit SubprocessCollector(const std::string& cmd, const std::vector<std::string>& args);
+    ~SubprocessCollector();
     std::optional<CollectorEvent> readEvent() override;
     void stop() override;
 

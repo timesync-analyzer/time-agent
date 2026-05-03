@@ -7,28 +7,32 @@
 
 #include "collector.h"
 
-// не забыть включить ntpd service
-
 std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) const {
-    bool hasMasterOffset = msg.find("master offset") != std::string::npos;
-    bool hasRms = !hasMasterOffset && msg.find(" rms ") != std::string::npos;
-    if (!hasMasterOffset && !hasRms) {
-        return std::nullopt;
-    }
     Ptp4lStats res{};
     double timestamp;
-    if (hasMasterOffset) {
-        // Both journal and subprocess output use the same "[ts] master offset ..." format
-        if (sscanf(msg.c_str(), "[%lf] master offset %ld s%d freq %ld path delay %ld", &timestamp, &res.offset, &res.state,
-                   &res.freq, &res.path_delay) == 5) {
-            return res;
-        }
-    } else {
-        // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
-        if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
-                   &res.path_delay) == 4) {
-            return res;
-        }
+    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld",
+            &timestamp, &res.offset, &res.state, &res.freq, &res.path_delay) == 5) {
+        return res;
+    }
+    if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
+                &res.path_delay) == 4) {
+        return res;
+    }
+    return std::nullopt;
+}
+
+std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) const {
+    Phc2SysStats res{};
+    double timestamp;
+    // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
+    if (sscanf(msg.c_str(), "[%lf] %*s rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
+               &res.path_delay) == 4) {
+        return res;
+    }
+    // Regular offset line: timestamp + 4 data fields (offset, state, freq, path_delay)
+    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
+               &res.path_delay) == 5) {
+        return res;
     }
     return std::nullopt;
 }
@@ -48,22 +52,6 @@ std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) con
         res.fromState = fromState;
         res.toState = toState;
         res.trigger = trigger;
-        return res;
-    }
-    return std::nullopt;
-}
-
-std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) const {
-    Phc2SysStats res{};
-    double timestamp;
-    // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
-    if (sscanf(msg.c_str(), "[%lf] %*s rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
-               &res.path_delay) == 4) {
-        return res;
-    }
-    // Regular offset line: timestamp + 4 data fields (offset, state, freq, path_delay)
-    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
-               &res.path_delay) == 5) {
         return res;
     }
     return std::nullopt;
@@ -150,7 +138,7 @@ std::optional<CollectorEvent> JournalCollector::readEvent() {
     return event;
 }
 
-SubproccessCollector::SubproccessCollector(const std::string& cmd, const std::vector<std::string>& args) : unit(cmd) {
+SubprocessCollector::SubprocessCollector(const std::string& cmd, const std::vector<std::string>& args) : unit(cmd) {
     std::vector<std::string> fullArgs(args);
     child = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream);
     if (!child.running()) {
@@ -160,7 +148,7 @@ SubproccessCollector::SubproccessCollector(const std::string& cmd, const std::ve
     spdlog::info("Started process: {} (pid={})", cmd, child.id());
 }
 
-std::optional<CollectorEvent> SubproccessCollector::readEvent() {
+std::optional<CollectorEvent> SubprocessCollector::readEvent() {
     CollectorEvent event{};
     auto now = std::chrono::system_clock::now();
     event.ts_usec = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
@@ -174,13 +162,13 @@ std::optional<CollectorEvent> SubproccessCollector::readEvent() {
     return event;
 }
 
-void SubproccessCollector::stop() {
+void SubprocessCollector::stop() {
     if (child.running()) {
         child.terminate();
     }
 }
 
-SubproccessCollector::~SubproccessCollector() {
+SubprocessCollector::~SubprocessCollector() {
     if (child.running()) {
         child.terminate();
         child.wait();

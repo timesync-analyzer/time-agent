@@ -15,13 +15,14 @@ endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
+option(TIME_AGENT_ENABLE_SANITIZERS "Build time-agent with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
 add_compile_options(-Wall -Wextra -Wpedantic -fno-omit-frame-pointer)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O2 -DNDEBUG)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-O0 -g3 -DDEBUG -fsanitize=address,undefined)
-    add_link_options(-fsanitize=address,undefined)
+    add_compile_options(-O0 -g3 -DDEBUG)
 endif()
 
 find_package(PkgConfig REQUIRED)

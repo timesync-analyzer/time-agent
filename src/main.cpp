@@ -33,14 +33,14 @@ std::unique_ptr<ICollector> makeCollector(const ServiceConfig& cfg) {
 
     if (cfg.name == "ptp4l") {
         if (cfg.source == "subproccess") {
-                return std::make_unique<SubproccessCollector>(
+                return std::make_unique<SubprocessCollector>(
                     "ptp4l", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "ptp4l", "-i", cfg.dev, "-s", "-m"});
         } else if (cfg.source == "journal") {
             return std::make_unique<JournalCollector>("ptp4l");
         }
     } else if (cfg.name == "phc2sys") {
         if (cfg.source == "subproccess") {
-            return std::make_unique<SubproccessCollector>(
+            return std::make_unique<SubprocessCollector>(
                 "phc2sys", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "/usr/local/sbin/phc2sys", "-a", "-r", "-r", "-m",
                                                     "--free_running", "1", "-l 6"});
         } else if (cfg.source == "journal") {
@@ -48,7 +48,7 @@ std::unique_ptr<ICollector> makeCollector(const ServiceConfig& cfg) {
         }
     } else if (cfg.name == "ppswatch") {
         if (cfg.source == "subproccess") {
-            return std::make_unique<SubproccessCollector>(
+            return std::make_unique<SubprocessCollector>(
                 "ppswatch", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "/usr/bin/ppswatch", cfg.dev});
         }
     }
