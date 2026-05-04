@@ -16,12 +16,12 @@
 
 Agent::Agent(std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors, std::unique_ptr<IAdapter> adapter,
                      const AgentConfig& config)
-    : node(config.globalConfig.node),
-      collectors(std::move(collectors)),
-      adapter(std::move(adapter)),
-      sysMetricsCollector(config),
-      pollTimeoutMs(config.monitorConfig.poll_timeout_ms) {
-    handlers_ = buildHandlers(*this->adapter, node);
+    : node_(config.globalConfig.node),
+      collectors_(std::move(collectors)),
+      adapter_(std::move(adapter)),
+      sysMetricsCollector_(config),
+      pollTimeoutMs_(config.monitorConfig.poll_timeout_ms) {
+    handlers_ = buildHandlers(*this->adapter_, node_);
 }
 
 Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& node) {
@@ -43,7 +43,7 @@ Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& nod
                          portEvent->toState, portEvent->trigger);
             if (portEvent->portName.find('/') == std::string::npos) {
                 spdlog::info("set new watching interface {}", portEvent->portName);
-                sysMetricsCollector.setInterface(portEvent->portName);
+                sysMetricsCollector_.setInterface(portEvent->portName);
                 portEvent->adapterName = NetworkAdapterResolver::resolve(portEvent->portName);
                 if (!portEvent->adapterName.empty()) {
                     spdlog::info("set new watching interface {} ({})", portEvent->portName, portEvent->adapterName);
@@ -88,7 +88,7 @@ Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& nod
 }
 
 void Agent::readerLoop(ICollector& collector, Handler handler) {
-    while (running) {
+    while (running_) {
         auto event = collector.readEvent();
 
         if (!event) {
@@ -100,24 +100,24 @@ void Agent::readerLoop(ICollector& collector, Handler handler) {
 }
 
 void Agent::sysMetricsLoop() {
-    while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(pollTimeoutMs));
-        if (!running) {
+    while (running_) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(pollTimeoutMs_));
+        if (!running_) {
             break;
         }
-        SystemStats sysMetrics = sysMetricsCollector.collect();
+        SystemStats sysMetrics = sysMetricsCollector_.collect();
         sysMetrics.timestamp_us = timestamp_utils::now_us();
         std::lock_guard lock(adapterMutex_);
-        adapter->send_sys_statistics(sysMetrics, node);
+        adapter_->send_sys_statistics(sysMetrics, node_);
     }
 }
 
 void Agent::run() {
     spdlog::info("Event loop started");
 
-    running = true;
+    running_ = true;
 
-    for (auto& [name, collector] : collectors) {
+    for (auto& [name, collector] : collectors_) {
         auto it = handlers_.find(name);
         if (it == handlers_.end()) {
             spdlog::warn("No handler for collector: {}", name);
@@ -133,7 +133,7 @@ void Agent::run() {
             t.join();
         }
     }
-    running = false;
+    running_ = false;
     if (sysMetricsThread_.joinable()) {
         sysMetricsThread_.join();
     }
@@ -142,8 +142,8 @@ void Agent::run() {
 }
 
 void Agent::stop() {
-    running = false;
-    for (auto& [name, collector] : collectors) {
+    running_ = false;
+    for (auto& [name, collector] : collectors_) {
         collector->stop();
     }
 }

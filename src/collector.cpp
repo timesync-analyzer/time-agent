@@ -140,22 +140,22 @@ std::optional<CollectorEvent> JournalCollector::readEvent() {
     return event;
 }
 
-SubprocessCollector::SubprocessCollector(const std::string& cmd, const std::vector<std::string>& args) : unit(cmd) {
+SubprocessCollector::SubprocessCollector(const std::string& cmd, const std::vector<std::string>& args) : unit_(cmd) {
     std::vector<std::string> fullArgs(args);
-    child = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream);
-    if (!child.running()) {
+    child_ = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream_);
+    if (!child_.running()) {
         spdlog::error("Failed to start process: {}", cmd);
         throw std::runtime_error("Failed to start process: " + cmd);
     }
-    spdlog::info("Started process: {} (pid={})", cmd, child.id());
+    spdlog::info("Started process: {} (pid={})", cmd, child_.id());
 }
 
 std::optional<CollectorEvent> SubprocessCollector::readEvent() {
     CollectorEvent event{};
     auto now = std::chrono::system_clock::now();
     event.ts_usec = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-    event.unit = std::string_view(unit);
-    if (!getline(stream, event.msg)) {
+    event.unit = std::string_view(unit_);
+    if (!getline(stream_, event.msg)) {
         return std::nullopt;
     }
     if (event.msg.empty()) {
@@ -165,14 +165,14 @@ std::optional<CollectorEvent> SubprocessCollector::readEvent() {
 }
 
 void SubprocessCollector::stop() {
-    if (child.running()) {
-        child.terminate();
+    if (child_.running()) {
+        child_.terminate();
     }
 }
 
 SubprocessCollector::~SubprocessCollector() {
-    if (child.running()) {
-        child.terminate();
-        child.wait();
+    if (child_.running()) {
+        child_.terminate();
+        child_.wait();
     }
 }

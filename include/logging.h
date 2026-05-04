@@ -8,6 +8,11 @@
 #include <string>
 
 namespace logging {
+
+/**
+ * @brief Initializes the process-wide spdlog logger used by time-agent.
+ * @param level Minimum log level name.
+ */
 inline void init(const std::string& level = "info") {
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
 
@@ -30,5 +35,8 @@ inline void init(const std::string& level = "info") {
     spdlog::flush_on(spdlog::level::warn);
 }
 
+/**
+ * @brief Flushes and releases spdlog resources.
+ */
 inline void shutdown() { spdlog::shutdown(); }
 }  // namespace logging

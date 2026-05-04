@@ -33,6 +33,12 @@ find_package(Protobuf REQUIRED)
 find_package(cppzmq REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
+option(TIME_AGENT_BUILD_DOCS "Generate Doxygen documentation" ON)
+
+if(TIME_AGENT_BUILD_DOCS)
+    find_package(Doxygen QUIET)
+endif()
+
 find_path(LIBPCI_INCLUDE_DIR
     NAMES pci/pci.h
     HINTS ${LIBPCI_INCLUDE_DIRS}
@@ -88,6 +94,32 @@ target_compile_options(journal_collector_lib PUBLIC
 add_executable(time_agent src/main.cpp)
 
 target_link_libraries(time_agent PRIVATE journal_collector_lib)
+
+if(TIME_AGENT_BUILD_DOCS)
+    if(DOXYGEN_FOUND)
+        set(DOXYGEN_PROJECT_NAME "time-agent")
+        set(DOXYGEN_PROJECT_NUMBER "${PROJECT_VERSION}")
+        set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
+        set(DOXYGEN_GENERATE_HTML YES)
+        set(DOXYGEN_GENERATE_LATEX NO)
+        set(DOXYGEN_RECURSIVE YES)
+        set(DOXYGEN_EXTRACT_ALL YES)
+        set(DOXYGEN_EXTRACT_PRIVATE NO)
+        set(DOXYGEN_EXTRACT_STATIC YES)
+        set(DOXYGEN_QUIET YES)
+        set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+
+        doxygen_add_docs(docs
+            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/README"
+            ALL
+            COMMENT "Generating Doxygen documentation"
+        )
+    else()
+        message(WARNING "Doxygen not found. Documentation target will not be generated.")
+    endif()
+endif()
 
 enable_testing()
 

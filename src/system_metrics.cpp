@@ -60,15 +60,17 @@ bool parseNext(const char*& p, const char* end, uint64_t& out) {
 
 }  // namespace
 
+namespace fs = std::filesystem;
+
 SysMetricsCollector::SysMetricsCollector(const AgentConfig& config, const SystemPaths& paths)
-    : temperatureCollector(config.configTemperatureCollector.sensors, paths.hwmon),
-      networkCollector(paths.netStats),
-      cpuCollector(paths.procStat),
-      memoryCollector(paths.procMeminfo) {
+    : temperatureCollector_(config.configTemperatureCollector.sensors, paths.hwmon),
+      networkCollector_(paths.netStats),
+      cpuCollector_(paths.procStat),
+      memoryCollector_(paths.procMeminfo) {
     spdlog::debug("SysMetricsCollector initialized");
 }
 
-void SysMetricsCollector::setInterface(const std::string& interface) { networkCollector.setInterface(interface); }
+void SysMetricsCollector::setInterface(const std::string& interface) { networkCollector_.setInterface(interface); }
 
 SystemStats SysMetricsCollector::collect() {
     SystemStats metrics;
@@ -76,28 +78,28 @@ SystemStats SysMetricsCollector::collect() {
     metrics.timestamp_us =
         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    auto tempMetrics = temperatureCollector.collect();
+    auto tempMetrics = temperatureCollector_.collect();
     if (tempMetrics) {
         metrics.temperatureStats = *tempMetrics;
     } else {
         spdlog::warn("Failed to collect temperature metrics");
     }
 
-    auto networkMetrics = networkCollector.collect();
+    auto networkMetrics = networkCollector_.collect();
     if (networkMetrics) {
         metrics.networkStats = *networkMetrics;
     } else {
         spdlog::warn("Failed to collect network metrics");
     }
 
-    auto cpuMetrics = cpuCollector.collect();
+    auto cpuMetrics = cpuCollector_.collect();
     if (cpuMetrics) {
         metrics.cpuStats = *cpuMetrics;
     } else {
         spdlog::warn("Failed to collect cpu metrics");
     }
 
-    auto memoryMetrics = memoryCollector.collect();
+    auto memoryMetrics = memoryCollector_.collect();
     if (memoryMetrics) {
         metrics.memoryStats = *memoryMetrics;
     } else {
