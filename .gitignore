@@ -1,3 +1,4 @@
 build/
 .cache/
 ptp-configs/
+time-agent/configs/alpha-ptp4l.conf

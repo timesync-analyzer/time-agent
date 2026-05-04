@@ -62,6 +62,7 @@ bool parseNext(const char*& p, const char* end, uint64_t& out) {
 
 SysMetricsCollector::SysMetricsCollector(const AgentConfig& config, const SystemPaths& paths)
     : temperatureCollector(config.configTemperatureCollector.sensors, paths.hwmon),
+      networkCollector(paths.netStats),
       cpuCollector(paths.procStat),
       memoryCollector(paths.procMeminfo) {
     spdlog::debug("SysMetricsCollector initialized");

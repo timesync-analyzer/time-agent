@@ -15,14 +15,13 @@ endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-option(TIME_AGENT_ENABLE_SANITIZERS "Build time-agent with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-
 add_compile_options(-Wall -Wextra -Wpedantic -fno-omit-frame-pointer)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O2 -DNDEBUG)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-O0 -g3 -DDEBUG)
+    add_compile_options(-O0 -g3 -DDEBUG -fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined)
 endif()
 
 find_package(PkgConfig REQUIRED)
@@ -101,9 +100,41 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(tests
+set(UNIT_TEST_SOURCES
     tests/test_collector.cpp
     tests/test_config.cpp
+    tests/test_agent.cpp
+    tests/test_adapter_converters.cpp
+    tests/test_system_metrics.cpp
+)
+
+set(INTEGRATION_TEST_SOURCES
+    tests/test_zmq_adapter_integration.cpp
+)
+
+add_executable(unit_tests
+    ${UNIT_TEST_SOURCES}
+)
+
+target_link_libraries(unit_tests PRIVATE
+    journal_collector_lib
+    GTest::gtest_main
+    GTest::gmock
+)
+
+add_executable(integration_tests
+    ${INTEGRATION_TEST_SOURCES}
+)
+
+target_link_libraries(integration_tests PRIVATE
+    journal_collector_lib
+    GTest::gtest_main
+    GTest::gmock
+)
+
+add_executable(tests
+    ${UNIT_TEST_SOURCES}
+    ${INTEGRATION_TEST_SOURCES}
 )
 
 target_link_libraries(tests PRIVATE
@@ -112,11 +143,7 @@ target_link_libraries(tests PRIVATE
     GTest::gmock
 )
 
-add_custom_command(TARGET tests POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    $<TARGET_FILE_DIR:tests>/fixtures
-)
-
 include(GoogleTest)
+gtest_discover_tests(unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(integration_tests PROPERTIES LABELS integration)
 gtest_discover_tests(tests)

@@ -2,6 +2,7 @@
 #include <systemd/sd-journal.h>
 
 #include <chrono>
+#include <cinttypes>
 #include <optional>
 #include <stdexcept>
 
@@ -10,12 +11,13 @@
 std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) const {
     Ptp4lStats res{};
     double timestamp;
-    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld",
-            &timestamp, &res.offset, &res.state, &res.freq, &res.path_delay) == 5) {
+    if (sscanf(msg.c_str(), "[%lf] rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64
+                            " +/- %*" SCNd64,
+               &timestamp, &res.offset, &res.freq, &res.path_delay) == 4) {
         return res;
     }
-    if (sscanf(msg.c_str(), "[%lf] rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
-                &res.path_delay) == 4) {
+    if (sscanf(msg.c_str(), "[%lf] %*s offset %" SCNd64 " s%d freq %" SCNd64 " path delay %" SCNd64, &timestamp, &res.offset,
+               &res.state, &res.freq, &res.path_delay) == 5) {
         return res;
     }
     return std::nullopt;
@@ -25,13 +27,14 @@ std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) 
     Phc2SysStats res{};
     double timestamp;
     // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
-    if (sscanf(msg.c_str(), "[%lf] %*s rms %*ld max %ld freq %ld +/- %*ld delay %ld +/- %*ld", &timestamp, &res.offset, &res.freq,
-               &res.path_delay) == 4) {
+    if (sscanf(msg.c_str(), "[%lf] %*s rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64
+                            " +/- %*" SCNd64,
+               &timestamp, &res.offset, &res.freq, &res.path_delay) == 4) {
         return res;
     }
     // Regular offset line: timestamp + 4 data fields (offset, state, freq, path_delay)
-    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %ld s%d freq %ld delay %ld", &timestamp, &res.offset, &res.state, &res.freq,
-               &res.path_delay) == 5) {
+    if (sscanf(msg.c_str(), "[%lf] %*s %*s offset %" SCNd64 " s%d freq %" SCNd64 " delay %" SCNd64, &timestamp, &res.offset,
+               &res.state, &res.freq, &res.path_delay) == 5) {
         return res;
     }
     return std::nullopt;
@@ -45,8 +48,6 @@ std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) con
     double timestamp;
     char portName[128], fromState[64], toState[64], trigger[128];
     if (sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
-               fromState, toState, trigger) == 6 ||
-        sscanf(msg.c_str(), "[%lf] [%*[^]]] port %d (%127[^)]): %63s to %63s on %127[^\n]", &timestamp, &res.portNumber, portName,
                fromState, toState, trigger) == 6) {
         res.portName = portName;
         res.fromState = fromState;
@@ -62,7 +63,8 @@ bool Phc2SysParser::isWaiting(const std::string& msg) const { return msg.find("W
 std::optional<PPSStats> PPSParser::parseMetrics(const std::string& msg) const {
     PPSStats res;
     int64_t timestamp_val, sequence_val;
-    if (sscanf(msg.c_str(), "timestamp: %ld, sequence: %ld, offset: %ld", &timestamp_val, &sequence_val, &res.offset) == 3) {
+    if (sscanf(msg.c_str(), "timestamp: %" SCNd64 ", sequence: %" SCNd64 ", offset: %" SCNd64, &timestamp_val, &sequence_val,
+               &res.offset) == 3) {
         return res;
     }
     spdlog::debug("return nullopt {}", msg);

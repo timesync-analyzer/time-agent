@@ -36,10 +36,18 @@ TEST_F(ParserTest, ParsePtp4lMinimalFields) {
     std::string msg = "[1000.5] master offset 10 s1 freq +100";
     auto result = ptp4lParser.parseMetrics(msg);
 
+    ASSERT_TRUE(!result.has_value());
+}
+
+TEST_F(ParserTest, ParsePtp4lRmsSummary) {
+    std::string msg = "[31964.600] rms   32 max   40 freq +12543 +/-   5 delay  9042 +/-  16";
+    auto result = ptp4lParser.parseMetrics(msg);
+
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(result->offset, 10);
-    EXPECT_EQ(result->state, 1);
-    EXPECT_EQ(result->freq, 100);
+    EXPECT_EQ(result->offset, 40);
+    EXPECT_EQ(result->freq, 12543);
+    EXPECT_EQ(result->path_delay, 9042);
+    EXPECT_EQ(result->state, 0);
 }
 
 TEST_F(ParserTest, ParsePtp4lInvalidMessage) {
@@ -65,6 +73,17 @@ TEST_F(ParserTest, ParsePhc2sysValidMessage) {
     EXPECT_EQ(result->state, 2);
     EXPECT_EQ(result->freq, 1257);
     EXPECT_EQ(result->path_delay, 1450);
+}
+
+TEST_F(ParserTest, ParsePhc2sysRmsSummary) {
+    std::string msg = "[192898.077] CLOCK_REALTIME rms 8 max 25 freq +123 +/- 4 delay 55 +/- 6";
+    auto result = phc2sysParser.parseMetrics(msg);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->offset, 25);
+    EXPECT_EQ(result->freq, 123);
+    EXPECT_EQ(result->path_delay, 55);
+    EXPECT_EQ(result->state, 0);
 }
 
 TEST_F(ParserTest, ParsePhc2sysNegativeFreq) {
@@ -138,4 +157,21 @@ TEST_F(ParserTest, IsPhc2sysWaitingFalseForMetrics) {
     EXPECT_FALSE(phc2sysParser.isWaiting(msg));
 }
 
-TEST_F(ParserTest, IsPhc2sysWaitingFalseForEmpty) { EXPECT_FALSE(phc2sysParser.isWaiting("")); }
+TEST_F(ParserTest, IsPhc2sysWaitingFalseForEmpty) {
+    EXPECT_FALSE(phc2sysParser.isWaiting(""));
+}
+
+TEST_F(ParserTest, ParsePpswatchValidMessage) {
+    std::string msg = "timestamp: 1712600030, sequence: 42, offset: -314";
+    auto result = ppsParser.parseMetrics(msg);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->offset, -314);
+}
+
+TEST_F(ParserTest, ParsePpswatchInvalidMessage) {
+    std::string msg = "pps event without expected fields";
+    auto result = ppsParser.parseMetrics(msg);
+
+    EXPECT_FALSE(result.has_value());
+}

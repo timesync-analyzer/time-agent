@@ -2,7 +2,6 @@ global:
   node: "hawk-d12"
 settings:
   poll_timeout_ms: 10000
-  sys_metric_update_freq: 15
   log_level: "debug"
 temperature:
   sensors:

@@ -133,6 +133,7 @@ void Agent::run() {
             t.join();
         }
     }
+    running = false;
     if (sysMetricsThread_.joinable()) {
         sysMetricsThread_.join();
     }
