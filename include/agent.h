@@ -1,16 +1,18 @@
 #pragma once
 
-#include "collector.h"
-
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "adapter.h"
+#include "collector.h"
 #include "config.h"
 #include "metrics.pb.h"
+#include "ptp_topology.h"
 #include "system_metrics.h"
 
 /**
@@ -28,7 +30,7 @@ public:
      * @param config Agent runtime configuration.
      */
     Agent(std::unordered_map<std::string, std::unique_ptr<ICollector>> collector, std::unique_ptr<IAdapter> adapter,
-              const AgentConfig& config);
+          const AgentConfig& config);
     /**
      * @brief Runs until collectors finish or stop() is requested.
      */
@@ -52,6 +54,7 @@ private:
     std::unordered_map<std::string, std::unique_ptr<ICollector>> collectors_;
     std::unique_ptr<IAdapter> adapter_;
     SysMetricsCollector sysMetricsCollector_;
+    PtpTopologyCollector ptpTopologyCollector_;
     std::mutex adapterMutex_;
     int pollTimeoutMs_;
     std::atomic<bool> running_{false};

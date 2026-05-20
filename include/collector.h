@@ -56,6 +56,33 @@ struct PortEvent {
 };
 
 /**
+ * @brief Parsed ptp4l foreign master discovery.
+ */
+struct ForeignMasterEvent {
+    std::string unit;
+    /**
+     * @brief Event timestamp in microseconds since Unix epoch.
+     */
+    uint64_t timestamp_us = 0;
+    int portNumber = 0;
+    std::string portName;
+    std::string masterClockIdentity;
+    int masterPortNumber = 0;
+};
+
+/**
+ * @brief Parsed ptp4l best master selection.
+ */
+struct BestMasterEvent {
+    std::string unit;
+    /**
+     * @brief Event timestamp in microseconds since Unix epoch.
+     */
+    uint64_t timestamp_us = 0;
+    std::string masterClockIdentity;
+};
+
+/**
  * @brief Parser for ptp4l metric and port transition log lines.
  */
 class Ptp4lParser {
@@ -72,6 +99,18 @@ public:
      * @return Parsed port event when msg contains a supported transition.
      */
     std::optional<PortEvent> parsePortEvent(const std::string& msg) const;
+    /**
+     * @brief Parses a ptp4l foreign master discovery line.
+     * @param msg Raw ptp4l log message.
+     * @return Parsed foreign master when msg reports "new foreign master".
+     */
+    std::optional<ForeignMasterEvent> parseForeignMasterEvent(const std::string& msg) const;
+    /**
+     * @brief Parses a ptp4l best master selection line.
+     * @param msg Raw ptp4l log message.
+     * @return Parsed best master when msg reports selected best master clock.
+     */
+    std::optional<BestMasterEvent> parseBestMasterEvent(const std::string& msg) const;
 };
 
 /**

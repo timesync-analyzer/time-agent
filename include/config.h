@@ -1,9 +1,8 @@
 #pragma once
-#include <yaml-cpp/yaml.h>
-
 #include <optional>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 /**
  * @brief Global identity settings for this agent instance.
@@ -72,6 +71,36 @@ struct ZMQConfig {
 };
 
 /**
+ * @brief PTP topology collection settings.
+ */
+struct PtpTopologyConfig {
+    /**
+     * @brief Enables periodic pmc topology snapshots.
+     */
+    bool on = false;
+    /**
+     * @brief Path to the linuxptp pmc binary.
+     */
+    std::string pmc_path = "/usr/sbin/pmc";
+    /**
+     * @brief Unix-domain socket used by pmc to query ptp4l.
+     */
+    std::string uds_path = "/var/run/ptp4lro";
+    /**
+     * @brief Optional ptp4l config path passed to pmc.
+     */
+    std::string config_path;
+    /**
+     * @brief PTP domain number.
+     */
+    int domain_number = 0;
+    /**
+     * @brief Boundary hops for pmc management messages.
+     */
+    int boundary_hops = 0;
+};
+
+/**
  * @brief Complete time-agent configuration assembled from config.yaml.
  */
 struct AgentConfig {
@@ -80,6 +109,7 @@ struct AgentConfig {
     std::vector<ServiceConfig> service;
     TemperatureCollectorConfig configTemperatureCollector;
     ZMQConfig configZMQ;
+    PtpTopologyConfig configPtpTopology;
 };
 
 /**

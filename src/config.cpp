@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 std::optional<AgentConfig> ConfigLoader::load(const std::string& path) {
     try {
@@ -45,6 +46,28 @@ std::optional<AgentConfig> ConfigLoader::load(const std::string& path) {
             }
             if (zmq["timeout_after_close_ms"]) {
                 config.configZMQ.timeout_after_close_ms = zmq["timeout_after_close_ms"].as<int>();
+            }
+        }
+
+        if (root["ptp_topology"]) {
+            const auto& topology = root["ptp_topology"];
+            if (topology["on"]) {
+                config.configPtpTopology.on = topology["on"].as<bool>();
+            }
+            if (topology["pmc_path"]) {
+                config.configPtpTopology.pmc_path = topology["pmc_path"].as<std::string>();
+            }
+            if (topology["uds_path"]) {
+                config.configPtpTopology.uds_path = topology["uds_path"].as<std::string>();
+            }
+            if (topology["config_path"]) {
+                config.configPtpTopology.config_path = topology["config_path"].as<std::string>();
+            }
+            if (topology["domain_number"]) {
+                config.configPtpTopology.domain_number = topology["domain_number"].as<int>();
+            }
+            if (topology["boundary_hops"]) {
+                config.configPtpTopology.boundary_hops = topology["boundary_hops"].as<int>();
             }
         }
 

@@ -10,6 +10,12 @@ zmq:
   endpoint: "tcp://armsrv:10000"
   queue_size: 10000
   timeout_after_close_ms: 1000
+ptp_topology:
+  on: false
+  pmc_path: "/usr/sbin/pmc"
+  uds_path: "/var/run/ptp4lro"
+  domain_number: 0
+  boundary_hops: 0
 services:
   ptp4l:
     on: true
@@ -21,4 +27,3 @@ services:
     on: false
     source: "subproccess"
     dev: "/dev/stand/pps"
-

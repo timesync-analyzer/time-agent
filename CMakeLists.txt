@@ -69,6 +69,7 @@ add_library(journal_collector_lib
     src/network_adapter_resolver.cpp
     src/system_metrics.cpp
     src/adapter.cpp
+    src/ptp_topology.cpp
 )
 
 target_include_directories(journal_collector_lib PUBLIC

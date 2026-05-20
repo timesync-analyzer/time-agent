@@ -1,3 +1,5 @@
+#include "collector.h"
+
 #include <spdlog/spdlog.h>
 #include <systemd/sd-journal.h>
 
@@ -6,13 +8,11 @@
 #include <optional>
 #include <stdexcept>
 
-#include "collector.h"
-
 std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) const {
     Ptp4lStats res{};
     double timestamp;
-    if (sscanf(msg.c_str(), "[%lf] rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64
-                            " +/- %*" SCNd64,
+    if (sscanf(msg.c_str(),
+               "[%lf] rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64 " +/- %*" SCNd64,
                &timestamp, &res.offset, &res.freq, &res.path_delay) == 4) {
         return res;
     }
@@ -27,8 +27,8 @@ std::optional<Phc2SysStats> Phc2SysParser::parseMetrics(const std::string& msg) 
     Phc2SysStats res{};
     double timestamp;
     // rms summary line: timestamp + 3 data fields (offset mapped to max, freq, path_delay)
-    if (sscanf(msg.c_str(), "[%lf] %*s rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64
-                            " +/- %*" SCNd64,
+    if (sscanf(msg.c_str(),
+               "[%lf] %*s rms %*" SCNd64 " max %" SCNd64 " freq %" SCNd64 " +/- %*" SCNd64 " delay %" SCNd64 " +/- %*" SCNd64,
                &timestamp, &res.offset, &res.freq, &res.path_delay) == 4) {
         return res;
     }
@@ -53,6 +53,38 @@ std::optional<PortEvent> Ptp4lParser::parsePortEvent(const std::string& msg) con
         res.fromState = fromState;
         res.toState = toState;
         res.trigger = trigger;
+        return res;
+    }
+    return std::nullopt;
+}
+
+std::optional<ForeignMasterEvent> Ptp4lParser::parseForeignMasterEvent(const std::string& msg) const {
+    if (msg.find("new foreign master") == std::string::npos) {
+        return std::nullopt;
+    }
+
+    ForeignMasterEvent res;
+    double timestamp;
+    char portName[128], masterClockIdentity[64];
+    if (sscanf(msg.c_str(), "[%lf] port %d (%127[^)]): new foreign master %63[^-]-%d", &timestamp, &res.portNumber, portName,
+               masterClockIdentity, &res.masterPortNumber) == 5) {
+        res.portName = portName;
+        res.masterClockIdentity = masterClockIdentity;
+        return res;
+    }
+    return std::nullopt;
+}
+
+std::optional<BestMasterEvent> Ptp4lParser::parseBestMasterEvent(const std::string& msg) const {
+    if (msg.find("selected best master clock") == std::string::npos) {
+        return std::nullopt;
+    }
+
+    BestMasterEvent res;
+    double timestamp;
+    char masterClockIdentity[64];
+    if (sscanf(msg.c_str(), "[%lf] selected best master clock %63s", &timestamp, masterClockIdentity) == 2) {
+        res.masterClockIdentity = masterClockIdentity;
         return res;
     }
     return std::nullopt;
@@ -100,9 +132,7 @@ JournalCollector::~JournalCollector() {
     }
 }
 
-void JournalCollector::stop() {
-    stop_requested_ = true;
-}
+void JournalCollector::stop() { stop_requested_ = true; }
 
 std::optional<CollectorEvent> JournalCollector::readEvent() {
     while (true) {
