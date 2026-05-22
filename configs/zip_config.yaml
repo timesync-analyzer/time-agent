@@ -11,7 +11,7 @@ zmq:
   queue_size: 10000
   timeout_after_close_ms: 1000
 ptp_topology:
-  on: false
+  on: true
   pmc_path: "/usr/sbin/pmc"
   uds_path: "/var/run/ptp4lro"
   domain_number: 0

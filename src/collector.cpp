@@ -76,7 +76,7 @@ std::optional<ForeignMasterEvent> Ptp4lParser::parseForeignMasterEvent(const std
 }
 
 std::optional<BestMasterEvent> Ptp4lParser::parseBestMasterEvent(const std::string& msg) const {
-    if (msg.find("selected best master clock") == std::string::npos) {
+    if (msg.find("selected") == std::string::npos) {
         return std::nullopt;
     }
 
@@ -84,6 +84,10 @@ std::optional<BestMasterEvent> Ptp4lParser::parseBestMasterEvent(const std::stri
     double timestamp;
     char masterClockIdentity[64];
     if (sscanf(msg.c_str(), "[%lf] selected best master clock %63s", &timestamp, masterClockIdentity) == 2) {
+        res.masterClockIdentity = masterClockIdentity;
+        return res;
+    }
+    if (sscanf(msg.c_str(), "[%lf] selected local clock %63s as best master", &timestamp, masterClockIdentity) == 2) {
         res.masterClockIdentity = masterClockIdentity;
         return res;
     }

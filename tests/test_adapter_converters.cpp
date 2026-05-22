@@ -84,6 +84,38 @@ TEST(AdapterConvertersTest, ConvertsPortEventToMetricsWrapper) {
     EXPECT_EQ(wrapper.ptp4l_port_event().event_trigger(), "MASTER_CLOCK_SELECTED");
 }
 
+TEST(AdapterConvertersTest, ConvertsPtpTopologySnapshotToMetricsWrapper) {
+    PtpTopologySnapshotData snapshot;
+    snapshot.timestamp_us = 1'700'000'123'456'789;
+    snapshot.localClockIdentity = "c46237.fffe.0d2070";
+    snapshot.parentClockIdentity = "000bab.fffe.df7a52";
+    snapshot.parentPortNumber = 1;
+    snapshot.grandmasterIdentity = "000bab.fffe.df7a52";
+    snapshot.stepsRemoved = 1;
+    snapshot.meanPathDelayNs = 1696;
+    snapshot.childPortNumber = 1;
+    snapshot.ports.push_back({1, "c46237.fffe.0d2070-1", "SLAVE"});
+
+    auto wrapper = converters::to_ptp_topology_snapshot(snapshot, "node-topology");
+
+    EXPECT_EQ(wrapper.type(), MESSAGE_TYPE_PTP_TOPOLOGY);
+    EXPECT_EQ(wrapper.node_name(), "node-topology");
+    EXPECT_EQ(wrapper.timestamp().seconds(), 1'700'000'123);
+    EXPECT_EQ(wrapper.timestamp().nanos(), 456'789'000);
+    ASSERT_TRUE(wrapper.has_ptp_topology());
+    EXPECT_EQ(wrapper.ptp_topology().local_clock_identity(), "c46237.fffe.0d2070");
+    EXPECT_EQ(wrapper.ptp_topology().parent_clock_identity(), "000bab.fffe.df7a52");
+    EXPECT_EQ(wrapper.ptp_topology().parent_port(), 1);
+    EXPECT_EQ(wrapper.ptp_topology().grandmaster_identity(), "000bab.fffe.df7a52");
+    EXPECT_EQ(wrapper.ptp_topology().steps_removed(), 1);
+    EXPECT_EQ(wrapper.ptp_topology().mean_path_delay_ns(), 1696);
+    EXPECT_EQ(wrapper.ptp_topology().child_port(), 1);
+    ASSERT_EQ(wrapper.ptp_topology().ports_size(), 1);
+    EXPECT_EQ(wrapper.ptp_topology().ports(0).port(), 1);
+    EXPECT_EQ(wrapper.ptp_topology().ports(0).port_identity(), "c46237.fffe.0d2070-1");
+    EXPECT_EQ(wrapper.ptp_topology().ports(0).state(), "SLAVE");
+}
+
 TEST(AdapterConvertersTest, ConvertsSystemStatsToMetricsWrapper) {
     SystemStats stats;
     stats.timestamp_us = 2'000'003;

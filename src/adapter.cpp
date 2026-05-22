@@ -108,6 +108,31 @@ MetricsWrapper to_port_event(const PortEvent& internal, const std::string& node)
     return metrics_wrapper;
 }
 
+MetricsWrapper to_ptp_topology_snapshot(const PtpTopologySnapshotData& internal, const std::string& node) {
+    MetricsWrapper metrics_wrapper;
+    metrics_wrapper.set_type(MessageType::MESSAGE_TYPE_PTP_TOPOLOGY);
+    metrics_wrapper.set_node_name(node);
+    *metrics_wrapper.mutable_timestamp() = timestamp_utils::from_us(internal.timestamp_us);
+    auto* topology = metrics_wrapper.mutable_ptp_topology();
+
+    topology->set_local_clock_identity(internal.localClockIdentity);
+    topology->set_parent_clock_identity(internal.parentClockIdentity);
+    topology->set_parent_port(internal.parentPortNumber);
+    topology->set_grandmaster_identity(internal.grandmasterIdentity);
+    topology->set_steps_removed(internal.stepsRemoved);
+    topology->set_mean_path_delay_ns(internal.meanPathDelayNs);
+    topology->set_child_port(internal.childPortNumber);
+
+    for (const auto& port : internal.ports) {
+        auto* topologyPort = topology->add_ports();
+        topologyPort->set_port(port.portNumber);
+        topologyPort->set_port_identity(port.portIdentity);
+        topologyPort->set_state(port.state);
+    }
+
+    return metrics_wrapper;
+}
+
 }  // namespace converters
 
 ZMQAdapter::ZMQAdapter(const ZMQConfig& config, const std::string& node)
@@ -143,6 +168,12 @@ bool ZMQAdapter::send_sys_statistics(const SystemStats& sysStats, const std::str
 
 bool ZMQAdapter::send_ptp4l_port_event(const PortEvent& event, const std::string& node) {
     auto metrics = converters::to_port_event(event, node);
+    return send_impl(metrics);
+}
+
+bool ZMQAdapter::send_ptp_topology_snapshot(const PtpTopologySnapshotData& snapshot, const std::string& node) {
+    auto metrics = converters::to_ptp_topology_snapshot(snapshot, node);
+    spdlog::debug("send ptp topology");
     return send_impl(metrics);
 }
 

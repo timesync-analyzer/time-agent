@@ -75,11 +75,19 @@ public:
         return true;
     }
 
+    bool send_ptp_topology_snapshot(const PtpTopologySnapshotData& snapshot, const std::string& node) override {
+        std::lock_guard lock(mutex_);
+        topologySnapshots.push_back(snapshot);
+        nodes.push_back(node);
+        return true;
+    }
+
     std::vector<Ptp4lStats> ptpStats;
     std::vector<Phc2SysStats> phcStats;
     std::vector<PPSStats> ppsStats;
     std::vector<SystemStats> sysStats;
     std::vector<PortEvent> portEvents;
+    std::vector<PtpTopologySnapshotData> topologySnapshots;
     std::vector<std::string> nodes;
 
 private:
@@ -155,8 +163,8 @@ TEST(AgentTest, IgnoresPhc2SysWaitingMessage) {
 TEST(AgentTest, RoutesPpswatchMetricsToAdapter) {
     auto adapter = std::make_unique<RecordingAdapter>();
     auto* adapterPtr = adapter.get();
-    Agent agent(makeCollectors("ppswatch", "ppswatch", {"timestamp: 1712600030, sequence: 42, offset: -314"}),
-                std::move(adapter), makeAgentConfig());
+    Agent agent(makeCollectors("ppswatch", "ppswatch", {"timestamp: 1712600030, sequence: 42, offset: -314"}), std::move(adapter),
+                makeAgentConfig());
 
     agent.run();
 

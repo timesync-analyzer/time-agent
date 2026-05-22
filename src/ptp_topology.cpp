@@ -86,10 +86,11 @@ uint64_t nowUs() {
 }
 }  // namespace
 
-std::optional<PtpTopologySnapshot> PtpTopologyParser::parse(const std::string& defaultDataSet, const std::string& parentDataSet,
-                                                            const std::string& currentDataSet,
-                                                            const std::string& portDataSet) const {
-    PtpTopologySnapshot snapshot;
+std::optional<PtpTopologySnapshotData> PtpTopologyParser::parse(const std::string& defaultDataSet,
+                                                                const std::string& parentDataSet,
+                                                                const std::string& currentDataSet,
+                                                                const std::string& portDataSet) const {
+    PtpTopologySnapshotData snapshot;
     snapshot.timestamp_us = nowUs();
 
     std::string key;
@@ -174,7 +175,7 @@ PtpTopologyCollector::PtpTopologyCollector(PtpTopologyConfig config) : config_(s
 
 bool PtpTopologyCollector::enabled() const { return config_.on; }
 
-std::optional<PtpTopologySnapshot> PtpTopologyCollector::collect() const {
+std::optional<PtpTopologySnapshotData> PtpTopologyCollector::collect() const {
     const auto defaultDataSet = runCommand("GET DEFAULT_DATA_SET");
     if (!defaultDataSet) {
         return std::nullopt;

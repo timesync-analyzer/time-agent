@@ -22,7 +22,7 @@ struct PtpPortSnapshot {
  * parentClockIdentity -> localClockIdentity is the observed graph edge when
  * the local clock is synchronized through a SLAVE port.
  */
-struct PtpTopologySnapshot {
+struct PtpTopologySnapshotData {
     uint64_t timestamp_us = 0;
     std::string localClockIdentity;
     std::string parentClockIdentity;
@@ -42,8 +42,8 @@ public:
     /**
      * @brief Builds a topology snapshot from pmc command outputs.
      */
-    std::optional<PtpTopologySnapshot> parse(const std::string& defaultDataSet, const std::string& parentDataSet,
-                                             const std::string& currentDataSet, const std::string& portDataSet) const;
+    std::optional<PtpTopologySnapshotData> parse(const std::string& defaultDataSet, const std::string& parentDataSet,
+                                                 const std::string& currentDataSet, const std::string& portDataSet) const;
 };
 
 /**
@@ -54,7 +54,7 @@ public:
     explicit PtpTopologyCollector(PtpTopologyConfig config);
 
     bool enabled() const;
-    std::optional<PtpTopologySnapshot> collect() const;
+    std::optional<PtpTopologySnapshotData> collect() const;
 
 private:
     std::vector<std::string> buildArgs(const std::string& command) const;

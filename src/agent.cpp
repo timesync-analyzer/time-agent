@@ -77,10 +77,14 @@ Agent::HandlerMap Agent::buildHandlers(IAdapter& adapter, const std::string& nod
                         "PTP topology snapshot selected_best_master={} local_clock={} parent_clock={} grandmaster_clock={} "
                         "steps_removed={} mean_path_delay_ns={} child_port={}",
                         bestMaster->masterClockIdentity, snapshot->localClockIdentity, snapshot->parentClockIdentity,
-                        snapshot->grandmasterIdentity, snapshot->stepsRemoved, snapshot->meanPathDelayNs, snapshot->childPortNumber);
+                        snapshot->grandmasterIdentity, snapshot->stepsRemoved, snapshot->meanPathDelayNs,
+                        snapshot->childPortNumber);
+                    {
+                        std::lock_guard lock(adapterMutex_);
+                        adapter.send_ptp_topology_snapshot(*snapshot, node);
+                    }
                 } else {
-                    spdlog::warn("failed to collect PTP topology snapshot after best master {}",
-                                 bestMaster->masterClockIdentity);
+                    spdlog::warn("failed to collect PTP topology snapshot after best master {}", bestMaster->masterClockIdentity);
                 }
             }
             return;

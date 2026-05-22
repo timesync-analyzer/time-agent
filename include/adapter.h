@@ -6,6 +6,7 @@
 
 #include "collector.h"
 #include "metrics.pb.h"
+#include "ptp_topology.h"
 #include "system_metrics.h"
 
 namespace converters {
@@ -49,6 +50,14 @@ MetricsWrapper to_pps_metrics(const PPSStats& internal, const std::string& node)
  * @return Serialized-ready protobuf wrapper.
  */
 MetricsWrapper to_port_event(const PortEvent& internal, const std::string& node);
+
+/**
+ * @brief Converts a PTP topology snapshot into a MetricsWrapper protobuf message.
+ * @param internal Internal PTP topology snapshot.
+ * @param node Node name attached to the outgoing metric.
+ * @return Serialized-ready protobuf wrapper.
+ */
+MetricsWrapper to_ptp_topology_snapshot(const PtpTopologySnapshotData& internal, const std::string& node);
 }  // namespace converters
 
 /**
@@ -95,6 +104,13 @@ public:
      * @return true when the event was accepted by the transport.
      */
     virtual bool send_ptp4l_port_event(const PortEvent& event, const std::string& node) = 0;
+    /**
+     * @brief Sends a PTP topology snapshot for node.
+     * @param snapshot PTP topology snapshot collected from ptp4l management data.
+     * @param node Node name attached to the outgoing metric.
+     * @return true when the snapshot was accepted by the transport.
+     */
+    virtual bool send_ptp_topology_snapshot(const PtpTopologySnapshotData& snapshot, const std::string& node) = 0;
 };
 
 /**
@@ -114,6 +130,7 @@ public:
     bool send_pps_statistics(const PPSStats& ppsStats, const std::string& node) override;
     bool send_sys_statistics(const SystemStats& sysStats, const std::string& node) override;
     bool send_ptp4l_port_event(const PortEvent& event, const std::string& node) override;
+    bool send_ptp_topology_snapshot(const PtpTopologySnapshotData& snapshot, const std::string& node) override;
 
 private:
     std::unique_ptr<zmq::context_t> context_;
