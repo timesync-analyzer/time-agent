@@ -288,10 +288,14 @@ TEST(SystemMetricsTest, SysMetricsCollectorAggregatesFakeSystemPaths) {
     auto stats = collector.collect();
 
     EXPECT_GT(stats.timestamp_us, 0);
-    EXPECT_EQ(stats.networkStats.rx_packets, 101);
-    EXPECT_EQ(stats.memoryStats.mem_available_kb, 4'500'000);
-    EXPECT_NEAR(stats.cpuStats.usage_percent, 66.666, 0.01);
-    ASSERT_EQ(stats.temperatureStats.zonesReadings.size(), 1);
-    EXPECT_EQ(stats.temperatureStats.zonesReadings[0].sensor, "coretemp");
-    EXPECT_EQ(stats.temperatureStats.zonesReadings[0].temperature, 44500);
+    ASSERT_TRUE(stats.networkStats.has_value());
+    EXPECT_EQ(stats.networkStats->rx_packets, 101);
+    ASSERT_TRUE(stats.memoryStats.has_value());
+    EXPECT_EQ(stats.memoryStats->mem_available_kb, 4'500'000);
+    ASSERT_TRUE(stats.cpuStats.has_value());
+    EXPECT_NEAR(stats.cpuStats->usage_percent, 66.666, 0.01);
+    ASSERT_TRUE(stats.temperatureStats.has_value());
+    ASSERT_EQ(stats.temperatureStats->zonesReadings.size(), 1);
+    EXPECT_EQ(stats.temperatureStats->zonesReadings[0].sensor, "coretemp");
+    EXPECT_EQ(stats.temperatureStats->zonesReadings[0].temperature, 44500);
 }

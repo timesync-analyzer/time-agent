@@ -141,10 +141,10 @@ struct CpuStats {
     /**
      * @brief CPU usage percentage computed from the previous sample.
      */
-    double usage_percent;
-    uint64_t context_switches;
-    uint64_t interrupts;
-    uint64_t softirqs;
+    double usage_percent = 0.0;
+    uint64_t context_switches = 0;
+    uint64_t interrupts = 0;
+    uint64_t softirqs = 0;
 };
 
 /**
@@ -165,11 +165,11 @@ struct SystemStats {
     /**
      * @brief Snapshot timestamp in microseconds since Unix epoch.
      */
-    uint64_t timestamp_us;
-    TemperatureStats temperatureStats;
-    NetworkStats networkStats;
-    CpuStats cpuStats;
-    MemoryStats memoryStats;
+    uint64_t timestamp_us = 0;
+    std::optional<TemperatureStats> temperatureStats;
+    std::optional<NetworkStats> networkStats;
+    std::optional<CpuStats> cpuStats;
+    std::optional<MemoryStats> memoryStats;
 };
 
 /**

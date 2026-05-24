@@ -70,10 +70,14 @@ TEST(ZMQAdapterIntegrationTest, SendsSystemMetricsOverPushPullSocket) {
 
     SystemStats stats;
     stats.timestamp_us = 9'876'543;
-    stats.cpuStats.usage_percent = 12.5;
-    stats.memoryStats.mem_available_kb = 2048;
-    stats.networkStats.rx_packets = 99;
-    stats.temperatureStats.zonesReadings.push_back({"coretemp", "Package id 0", 44000});
+    stats.cpuStats.emplace();
+    stats.cpuStats->usage_percent = 12.5;
+    stats.memoryStats.emplace();
+    stats.memoryStats->mem_available_kb = 2048;
+    stats.networkStats.emplace();
+    stats.networkStats->rx_packets = 99;
+    stats.temperatureStats.emplace();
+    stats.temperatureStats->zonesReadings.push_back({"coretemp", "Package id 0", 44000});
 
     ASSERT_TRUE(adapter.send_sys_statistics(stats, "node-system"));
 

@@ -119,24 +119,28 @@ TEST(AdapterConvertersTest, ConvertsPtpTopologySnapshotToMetricsWrapper) {
 TEST(AdapterConvertersTest, ConvertsSystemStatsToMetricsWrapper) {
     SystemStats stats;
     stats.timestamp_us = 2'000'003;
-    stats.cpuStats.usage_percent = 73.5;
-    stats.cpuStats.context_switches = 10;
-    stats.cpuStats.interrupts = 20;
-    stats.cpuStats.softirqs = 30;
-    stats.memoryStats.mem_available_kb = 1000;
-    stats.memoryStats.mem_free_kb = 400;
-    stats.memoryStats.swap_total_kb = 200;
-    stats.memoryStats.swap_free_kb = 50;
-    stats.memoryStats.buffers_kb = 64;
-    stats.networkStats.rx_packets = 1;
-    stats.networkStats.tx_packets = 2;
-    stats.networkStats.rx_dropped = 3;
-    stats.networkStats.tx_dropped = 4;
-    stats.networkStats.rx_errors = 5;
-    stats.networkStats.tx_errors = 6;
-    stats.networkStats.collisions = 7;
-    stats.temperatureStats.zonesReadings.push_back({"coretemp", "Package id 0", 44500});
-    stats.temperatureStats.zonesReadings.push_back({"nvme", "Composite", 39000});
+    stats.cpuStats.emplace();
+    stats.cpuStats->usage_percent = 73.5;
+    stats.cpuStats->context_switches = 10;
+    stats.cpuStats->interrupts = 20;
+    stats.cpuStats->softirqs = 30;
+    stats.memoryStats.emplace();
+    stats.memoryStats->mem_available_kb = 1000;
+    stats.memoryStats->mem_free_kb = 400;
+    stats.memoryStats->swap_total_kb = 200;
+    stats.memoryStats->swap_free_kb = 50;
+    stats.memoryStats->buffers_kb = 64;
+    stats.networkStats.emplace();
+    stats.networkStats->rx_packets = 1;
+    stats.networkStats->tx_packets = 2;
+    stats.networkStats->rx_dropped = 3;
+    stats.networkStats->tx_dropped = 4;
+    stats.networkStats->rx_errors = 5;
+    stats.networkStats->tx_errors = 6;
+    stats.networkStats->collisions = 7;
+    stats.temperatureStats.emplace();
+    stats.temperatureStats->zonesReadings.push_back({"coretemp", "Package id 0", 44500});
+    stats.temperatureStats->zonesReadings.push_back({"nvme", "Composite", 39000});
 
     auto wrapper = converters::to_system_metrics(stats, "node-e");
 
@@ -154,4 +158,20 @@ TEST(AdapterConvertersTest, ConvertsSystemStatsToMetricsWrapper) {
     EXPECT_EQ(wrapper.system().temperature_stats().zones_readings(0).label(), "Package id 0");
     EXPECT_EQ(wrapper.system().temperature_stats().zones_readings(0).temperature(), 44500);
     EXPECT_EQ(wrapper.system().temperature_stats().zones_readings(1).sensor(), "nvme");
+}
+
+TEST(AdapterConvertersTest, OmitsUnavailableSystemMetricGroups) {
+    SystemStats stats;
+    stats.timestamp_us = 2'000'003;
+    stats.memoryStats.emplace();
+    stats.memoryStats->mem_available_kb = 1000;
+
+    auto wrapper = converters::to_system_metrics(stats, "node-partial");
+
+    ASSERT_TRUE(wrapper.has_system());
+    EXPECT_FALSE(wrapper.system().has_cpu_stats());
+    EXPECT_TRUE(wrapper.system().has_memory_stats());
+    EXPECT_FALSE(wrapper.system().has_network_stats());
+    EXPECT_FALSE(wrapper.system().has_temperature_stats());
+    EXPECT_EQ(wrapper.system().memory_stats().mem_available_kb(), 1000);
 }

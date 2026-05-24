@@ -47,34 +47,42 @@ MetricsWrapper to_system_metrics(const SystemStats& internal, const std::string&
 
     auto* metrics = metrics_wrapper.mutable_system();
 
-    auto* cpu = metrics->mutable_cpu_stats();
-    cpu->set_usage_percent(internal.cpuStats.usage_percent);
-    cpu->set_context_switches(internal.cpuStats.context_switches);
-    cpu->set_interrupts(internal.cpuStats.interrupts);
-    cpu->set_softirqs(internal.cpuStats.softirqs);
+    if (internal.cpuStats) {
+        auto* cpu = metrics->mutable_cpu_stats();
+        cpu->set_usage_percent(internal.cpuStats->usage_percent);
+        cpu->set_context_switches(internal.cpuStats->context_switches);
+        cpu->set_interrupts(internal.cpuStats->interrupts);
+        cpu->set_softirqs(internal.cpuStats->softirqs);
+    }
 
-    auto* mem = metrics->mutable_memory_stats();
-    mem->set_mem_available_kb(internal.memoryStats.mem_available_kb);
-    mem->set_mem_free_kb(internal.memoryStats.mem_free_kb);
-    mem->set_swap_total_kb(internal.memoryStats.swap_total_kb);
-    mem->set_swap_free_kb(internal.memoryStats.swap_free_kb);
-    mem->set_buffers_kb(internal.memoryStats.buffers_kb);
+    if (internal.memoryStats) {
+        auto* mem = metrics->mutable_memory_stats();
+        mem->set_mem_available_kb(internal.memoryStats->mem_available_kb);
+        mem->set_mem_free_kb(internal.memoryStats->mem_free_kb);
+        mem->set_swap_total_kb(internal.memoryStats->swap_total_kb);
+        mem->set_swap_free_kb(internal.memoryStats->swap_free_kb);
+        mem->set_buffers_kb(internal.memoryStats->buffers_kb);
+    }
 
-    auto* net = metrics->mutable_network_stats();
-    net->set_rx_packets(internal.networkStats.rx_packets);
-    net->set_tx_packets(internal.networkStats.tx_packets);
-    net->set_rx_dropped(internal.networkStats.rx_dropped);
-    net->set_tx_dropped(internal.networkStats.tx_dropped);
-    net->set_rx_errors(internal.networkStats.rx_errors);
-    net->set_tx_errors(internal.networkStats.tx_errors);
-    net->set_collisions(internal.networkStats.collisions);
+    if (internal.networkStats) {
+        auto* net = metrics->mutable_network_stats();
+        net->set_rx_packets(internal.networkStats->rx_packets);
+        net->set_tx_packets(internal.networkStats->tx_packets);
+        net->set_rx_dropped(internal.networkStats->rx_dropped);
+        net->set_tx_dropped(internal.networkStats->tx_dropped);
+        net->set_rx_errors(internal.networkStats->rx_errors);
+        net->set_tx_errors(internal.networkStats->tx_errors);
+        net->set_collisions(internal.networkStats->collisions);
+    }
 
-    auto* temp = metrics->mutable_temperature_stats();
-    for (const auto& zone : internal.temperatureStats.zonesReadings) {
-        auto* reading = temp->add_zones_readings();
-        reading->set_sensor(zone.sensor);
-        reading->set_label(zone.label);
-        reading->set_temperature(zone.temperature);
+    if (internal.temperatureStats) {
+        auto* temp = metrics->mutable_temperature_stats();
+        for (const auto& zone : internal.temperatureStats->zonesReadings) {
+            auto* reading = temp->add_zones_readings();
+            reading->set_sensor(zone.sensor);
+            reading->set_label(zone.label);
+            reading->set_temperature(zone.temperature);
+        }
     }
 
     return metrics_wrapper;
