@@ -1,0 +1,31 @@
+global:
+  node: "node"
+settings:
+  poll_timeout_ms: 10000
+  log_level: "info"
+temperature:
+  sensors:
+    - name: "coretemp"
+zmq:
+  endpoint: "tcp://armsrv:10000"
+  queue_size: 10000
+  timeout_after_close_ms: 1000
+ptp_topology:
+  on: true
+  pmc_path: "/usr/sbin/pmc"
+  uds_path: "/var/run/ptp4lro"
+  domain_number: 0
+  boundary_hops: 0
+services:
+  ptp4l:
+    on: true
+    source: "journal"
+    dev: "rteth0"
+  phc2sys:
+    on: true
+    source: "journal"
+    dev: "rteth0"
+  ppswatch:
+    on: true
+    source: "subproccess"
+    dev: "/dev/stand/pps"

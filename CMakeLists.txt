@@ -34,6 +34,9 @@ find_package(cppzmq REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
 option(TIME_AGENT_BUILD_DOCS "Generate Doxygen documentation" ON)
+option(TIME_AGENT_BUILD_TESTS "Build unit and integration tests" ON)
+
+include(GNUInstallDirs)
 
 if(TIME_AGENT_BUILD_DOCS)
     find_package(Doxygen QUIET)
@@ -96,6 +99,10 @@ add_executable(time_agent src/main.cpp)
 
 target_link_libraries(time_agent PRIVATE journal_collector_lib)
 
+install(TARGETS time_agent
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
 if(TIME_AGENT_BUILD_DOCS)
     if(DOXYGEN_FOUND)
         set(DOXYGEN_PROJECT_NAME "time-agent")
@@ -122,61 +129,63 @@ if(TIME_AGENT_BUILD_DOCS)
     endif()
 endif()
 
-enable_testing()
+if(TIME_AGENT_BUILD_TESTS)
+    enable_testing()
 
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
 
-set(UNIT_TEST_SOURCES
-    tests/test_collector.cpp
-    tests/test_config.cpp
-    tests/test_agent.cpp
-    tests/test_adapter_converters.cpp
-    tests/test_system_metrics.cpp
-)
+    set(UNIT_TEST_SOURCES
+        tests/test_collector.cpp
+        tests/test_config.cpp
+        tests/test_agent.cpp
+        tests/test_adapter_converters.cpp
+        tests/test_system_metrics.cpp
+    )
 
-set(INTEGRATION_TEST_SOURCES
-    tests/test_zmq_adapter_integration.cpp
-)
+    set(INTEGRATION_TEST_SOURCES
+        tests/test_zmq_adapter_integration.cpp
+    )
 
-add_executable(unit_tests
-    ${UNIT_TEST_SOURCES}
-)
+    add_executable(unit_tests
+        ${UNIT_TEST_SOURCES}
+    )
 
-target_link_libraries(unit_tests PRIVATE
-    journal_collector_lib
-    GTest::gtest_main
-    GTest::gmock
-)
+    target_link_libraries(unit_tests PRIVATE
+        journal_collector_lib
+        GTest::gtest_main
+        GTest::gmock
+    )
 
-add_executable(integration_tests
-    ${INTEGRATION_TEST_SOURCES}
-)
+    add_executable(integration_tests
+        ${INTEGRATION_TEST_SOURCES}
+    )
 
-target_link_libraries(integration_tests PRIVATE
-    journal_collector_lib
-    GTest::gtest_main
-    GTest::gmock
-)
+    target_link_libraries(integration_tests PRIVATE
+        journal_collector_lib
+        GTest::gtest_main
+        GTest::gmock
+    )
 
-add_executable(tests
-    ${UNIT_TEST_SOURCES}
-    ${INTEGRATION_TEST_SOURCES}
-)
+    add_executable(tests
+        ${UNIT_TEST_SOURCES}
+        ${INTEGRATION_TEST_SOURCES}
+    )
 
-target_link_libraries(tests PRIVATE
-    journal_collector_lib
-    GTest::gtest_main
-    GTest::gmock
-)
+    target_link_libraries(tests PRIVATE
+        journal_collector_lib
+        GTest::gtest_main
+        GTest::gmock
+    )
 
-include(GoogleTest)
-gtest_discover_tests(unit_tests PROPERTIES LABELS unit)
-gtest_discover_tests(integration_tests PROPERTIES LABELS integration)
-gtest_discover_tests(tests)
+    include(GoogleTest)
+    gtest_discover_tests(unit_tests PROPERTIES LABELS unit)
+    gtest_discover_tests(integration_tests PROPERTIES LABELS integration)
+    gtest_discover_tests(tests)
+endif()
