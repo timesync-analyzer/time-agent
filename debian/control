@@ -1,0 +1,28 @@
+Source: time-agent
+Section: net
+Priority: optional
+Maintainer: Vladimir Filippov <zloyaloha@redlab-i.ru>
+Build-Depends: debhelper (>= 10),
+               cmake,
+               pkg-config,
+               libsystemd-dev,
+               libpci-dev,
+               libyaml-cpp-dev,
+               libspdlog-dev,
+               libprotobuf-dev,
+               protobuf-compiler,
+               libboost-system-dev,
+               libboost-filesystem-dev,
+               libzmq3-dev
+Standards-Version: 4.5.1
+
+Package: time-agent
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         linuxptp
+Description: PTP telemetry agent
+ Per-node agent that collects metrics from ptp4l, phc2sys, ppswatch and
+ system files, then publishes them over ZeroMQ to the timesync-analyzer
+ service. Ships a systemd unit and default configuration under
+ /etc/time-agent/.

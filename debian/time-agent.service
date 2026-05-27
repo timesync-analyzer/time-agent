@@ -1,0 +1,13 @@
+[Unit]
+Description=PTP telemetry agent
+After=network.target ptp4l.service
+Wants=ptp4l.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/time_agent /etc/time-agent/config.yaml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

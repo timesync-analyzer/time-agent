@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+#DH_VERBOSE=1
+
+DEB_VERSION = $(shell dpkg-parsechangelog | awk '/^Version:/ {print $$2}')
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DTIME_AGENT_BUILD_DOCS=OFF \
+		-DTIME_AGENT_BUILD_TESTS=OFF
+
+override_dh_auto_test:
+	# tests are skipped during package build (see TIME_AGENT_BUILD_TESTS=OFF)
+
+release:
+	gbp dch
+	dch -r --distribution bookworm-stand --force-distribution
+	git commit -s debian/changelog -m "Release Debian package `dpkg-parsechangelog | awk '/^Version:/ {print $$2}'`."

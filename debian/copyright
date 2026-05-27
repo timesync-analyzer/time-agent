@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: time-agent
+
+Files: *
+Copyright: Copyright (c) 2025-2026 Vladimir Filippov <zloyaloha@redlab-i.ru>
+License: MIT
+
+Files: debian/*
+Copyright: Copyright (c) 2025-2026 Vladimir Filippov <zloyaloha@redlab-i.ru>
+License: MIT

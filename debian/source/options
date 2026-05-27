@@ -1,0 +1,4 @@
+extend-diff-ignore = "(^|/)(build|\.cache)(/|$)"
+tar-ignore = "build"
+tar-ignore = "build/*"
+tar-ignore = ".cache"

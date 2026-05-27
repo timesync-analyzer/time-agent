@@ -1,0 +1,5 @@
+time-agent (0.0.1-1) bookworm-stand; urgency=medium
+
+  * debian: add initial packaging
+
+ -- Vladimir Filippov <zloyaloha@redlab-i.ru>  Wed, 27 May 2026 22:52:00 +0300
