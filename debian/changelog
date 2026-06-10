@@ -1,3 +1,11 @@
+time-agent (0.0.2-1) bookworm-stand; urgency=medium
+
+  [ Vladimir Filippov ]
+  * new test scripts
+  * add postinst script
+
+ -- zloyaloha <zloyaloha@redlab-i.ru>  Wed, 10 Jun 2026 14:41:34 +0300
+
 time-agent (0.0.1-1) bookworm-stand; urgency=medium
 
   * debian: add initial packaging
