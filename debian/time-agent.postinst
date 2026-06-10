@@ -1,0 +1,44 @@
+#!/bin/sh
+# postinst — встраивает результат `hostname` в поле global.node файла config.yaml
+set -e
+
+CONFIG="${CONFIG:-/etc/time-agent/config.yaml}"
+
+case "$1" in
+    configure)
+        NODE="$(hostname)"
+
+        if [ ! -f "$CONFIG" ]; then
+            echo "postinst: $CONFIG не найден, пропускаю" >&2
+            exit 0
+        fi
+
+        if command -v yq >/dev/null 2>&1 && yq --version 2>&1 | grep -q mikefarah; then
+            yq -i ".global.node = \"$NODE\"" "$CONFIG"
+        elif command -v yq >/dev/null 2>&1 && yq --help 2>&1 | grep -q -- '-y'; then
+            yq -y -i ".global.node = \"$NODE\"" "$CONFIG"
+        else
+            awk -v node="$NODE" '
+                /^[^[:space:]#].*:[[:space:]]*$/ { in_global = ($1 == "global:") }
+                in_global && $1 == "node:" && !done {
+                    match($0, /^[[:space:]]*/)
+                    print substr($0, 1, RLENGTH) "node: " node
+                    done = 1
+                    next
+                }
+                { print }
+            ' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+        fi
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
