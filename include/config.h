@@ -31,6 +31,8 @@ struct ServiceConfig {
      * @brief Device or interface argument used by subprocess collectors.
      */
     std::string dev;
+    /** Optional path to ppswatch; empty uses the system installation. */
+    std::string executable_path;
 };
 
 /**

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <unistd.h>
 
@@ -103,6 +104,23 @@ TEST_F(ConfigTest, LoadServices) {
     EXPECT_TRUE(config->service[2].on);
     EXPECT_EQ(config->service[2].source, "subproccess");
     EXPECT_EQ(config->service[2].dev, "/dev/pps0");
+    EXPECT_TRUE(config->service[2].executable_path.empty());
+}
+
+TEST_F(ConfigTest, LoadCustomPpswatchPath) {
+    std::ifstream input(validConfigPath);
+    std::string yaml((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    input.close();
+    const auto position = yaml.find("    dev: \"/dev/pps0\"");
+    ASSERT_NE(position, std::string::npos);
+    yaml.insert(position, "    executable_path: /opt/ptp/bin/ppswatch\n");
+    std::ofstream file(validConfigPath);
+    file << yaml;
+    file.close();
+    auto config = ConfigLoader::load(validConfigPath.string());
+    ASSERT_TRUE(config.has_value());
+    ASSERT_EQ(config->service.size(), 3);
+    EXPECT_EQ(config->service[2].executable_path, "/opt/ptp/bin/ppswatch");
 }
 
 TEST_F(ConfigTest, DefaultConfig) {

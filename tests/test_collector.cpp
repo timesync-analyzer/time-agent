@@ -1,6 +1,23 @@
 #include <gtest/gtest.h>
+#include <stdexcept>
+#include <unistd.h>
 
 #include "collector.h"
+
+TEST(SubprocessCollectorTest, RejectsEmptyCommand) {
+    EXPECT_THROW(SubprocessCollector("empty", {}), std::invalid_argument);
+}
+
+TEST(SubprocessCollectorTest, RootCanRunWithoutSudo) {
+    if (geteuid() != 0) {
+        GTEST_SKIP() << "This test requires root";
+    }
+    SubprocessCollector collector("test", {"/bin/sh", "-c", "printf 'ready\\n'; sleep 5"});
+    const auto event = collector.readEvent();
+    collector.stop();
+    ASSERT_TRUE(event.has_value());
+    EXPECT_EQ(event->msg, "ready");
+}
 
 class ParserTest : public ::testing::Test {
 protected:

@@ -93,6 +93,7 @@ std::optional<AgentConfig> ConfigLoader::load(const std::string& path) {
                 ppsConfig.on = services["ppswatch"]["on"].as<bool>(false);
                 ppsConfig.dev = services["ppswatch"]["dev"].as<std::string>();
                 ppsConfig.source = services["ppswatch"]["source"].as<std::string>();
+                ppsConfig.executable_path = services["ppswatch"]["executable_path"].as<std::string>("");
                 config.service.push_back(ppsConfig);
             }
         }

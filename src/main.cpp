@@ -49,7 +49,8 @@ std::unique_ptr<ICollector> makeCollector(const ServiceConfig& cfg) {
     } else if (cfg.name == "ppswatch") {
         if (cfg.source == "subproccess") {
             return std::make_unique<SubprocessCollector>(
-                "ppswatch", std::vector<std::string>{"/usr/bin/stdbuf", "-oL", "/usr/bin/ppswatch", cfg.dev});
+                "ppswatch", std::vector<std::string>{"/usr/bin/stdbuf", "-oL",
+                    cfg.executable_path.empty() ? "/usr/bin/ppswatch" : cfg.executable_path, cfg.dev});
         }
     }
 

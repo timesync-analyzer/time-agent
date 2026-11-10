@@ -7,6 +7,7 @@
 #include <cinttypes>
 #include <optional>
 #include <stdexcept>
+#include <unistd.h>
 
 std::optional<Ptp4lStats> Ptp4lParser::parseMetrics(const std::string& msg) const {
     Ptp4lStats res{};
@@ -175,8 +176,17 @@ std::optional<CollectorEvent> JournalCollector::readEvent() {
 }
 
 SubprocessCollector::SubprocessCollector(const std::string& cmd, const std::vector<std::string>& args) : unit_(cmd) {
+    if (args.empty()) {
+        throw std::invalid_argument("Subprocess command is empty");
+    }
     std::vector<std::string> fullArgs(args);
-    child_ = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream_);
+    if (geteuid() == 0) {
+        const auto executable = fullArgs.front();
+        fullArgs.erase(fullArgs.begin());
+        child_ = bp::child(executable, bp::args(fullArgs), bp::std_out > stream_);
+    } else {
+        child_ = bp::child("/usr/bin/sudo", bp::args(fullArgs), bp::std_out > stream_);
+    }
     if (!child_.running()) {
         spdlog::error("Failed to start process: {}", cmd);
         throw std::runtime_error("Failed to start process: " + cmd);
